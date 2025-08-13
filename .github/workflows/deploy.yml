@@ -53,7 +53,7 @@ jobs:
             # 프론트엔드 배포
             if [ $FRONTEND_CHANGED -gt 0 ]; then
               echo "Deploying frontend service..."
-              docker compose up -d --build frontend
+              docker compose up -d --build 'nginx'
               echo "Frontend deployment completed"
             else
               echo "No frontend changes detected, skipping frontend deployment"
@@ -62,7 +62,7 @@ jobs:
             # 백엔드 배포
             if [ $BACKEND_CHANGED -gt 0 ]; then
               echo "Deploying backend service..."
-              docker compose up -d --build backend
+              docker compose up -d --build 'springboot'
               echo "Backend deployment completed"
             else
               echo "No backend changes detected, skipping backend deployment"
