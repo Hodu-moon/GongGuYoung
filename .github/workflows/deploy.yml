@@ -8,6 +8,8 @@ on:
 
 jobs:
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: Deploy
     runs-on: ubuntu-latest
     
     steps:
