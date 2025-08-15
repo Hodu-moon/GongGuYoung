@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: backend
+
+  profiles:
+    active: local
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: create
+    open-in-view: false
+    properties:
+      hibernate:
+        "[format_sql]": true
+        "[default_batch_fetch_size]": 500
+        "[highlight_sql]": true
+
+fin-open:
+  api:
+    base-url: https://finopenapi.ssafy.io/api/v1/
