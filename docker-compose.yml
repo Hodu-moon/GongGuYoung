@@ -23,7 +23,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: always
-    ports:
+    environment:  
+      SPRING_PROFILES_ACTIVE: docker
+    ports:  
       - 80:80
 
   springboot:

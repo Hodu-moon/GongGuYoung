@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/dev
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    redis:
+      host: redis
+      port: 6379
