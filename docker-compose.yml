@@ -23,8 +23,6 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: always
-    environment:  
-      SPRING_PROFILES_ACTIVE: docker
     ports:  
       - 80:80
 
@@ -33,6 +31,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     restart: always
+    environment:  
+      SPRING_PROFILES_ACTIVE: docker
     ports:
       - 8080:8080
 
