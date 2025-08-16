@@ -20,7 +20,7 @@ RUN $JAVA_HOME/bin/jlink \
 #=================================================================
 # BUILD STAGE 2 - Build the application using Gradle
 #=================================================================
-FROM gradle:7.6-jdk17-alpine AS builder-app
+FROM gradle:8.5-jdk17-alpine AS builder-app
 
 # Copy application files and Gradle wrapper
 WORKDIR /workspace

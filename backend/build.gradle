@@ -21,7 +21,9 @@ dependencies {
 	// DEFAULT
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework:spring-web'
-	implementation 'org.projectlombok:lombok'
+	// Lombok 수정 - compileOnly와 annotationProcessor로 변경
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
 
 	// DB
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -34,6 +36,11 @@ dependencies {
 	// TEST
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	// 테스트용 Lombok 추가
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+	 // 테스트용 H2 데이터베이스 추가
+    testImplementation 'com.h2database:h2'
 }
 
 tasks.named('test') {
