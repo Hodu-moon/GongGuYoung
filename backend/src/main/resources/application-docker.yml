@@ -1,9 +1,9 @@
 spring:
   datasource:
-    url: jdbc:postgresql://postgres:5432/dev
-    username: postgres
-    password: 123456
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:mysql://mysql:3306/gonggu_db
+    username: gonggu
+    password: gonggu
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
   data:
     redis:
