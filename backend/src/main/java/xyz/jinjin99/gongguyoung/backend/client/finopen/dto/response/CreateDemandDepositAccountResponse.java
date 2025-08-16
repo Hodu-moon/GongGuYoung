@@ -2,6 +2,7 @@ package xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
+import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.common.CurrencyRecord;
 
 @Getter
 @ToString(callSuper = true)
@@ -23,17 +24,6 @@ public class CreateDemandDepositAccountResponse extends BaseResponse {
     // 계좌 번호
     private String accountNo;
 
-    private Currency currency;
-
-    @Getter
-    @NoArgsConstructor
-    @ToString
-    static class Currency {
-      // 통화 코드
-      private String currency;
-      // 통화명
-      private String currencyName;
-
-    }
+    private CurrencyRecord currency;
   }
 }
