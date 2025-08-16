@@ -17,5 +17,6 @@ spring:
         "[highlight_sql]": true
 
 fin-open:
+  member-id: novelss5573@gmail.com
   api:
-    base-url: https://finopenapi.ssafy.io/api/v1/
+    base-url: https://finopenapi.ssafy.io/ssafy/api/v1/

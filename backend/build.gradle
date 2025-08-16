@@ -18,16 +18,17 @@ repositories {
 }
 
 dependencies {
-	// DEFAULT
+	// WEB & VALIDATION
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework:spring-web'
-	// Lombok 수정 - compileOnly와 annotationProcessor로 변경
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	
+	// ANNOTATION PROCESSING
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
 	// DB
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	runtimeOnly 'org.postgresql:postgresql'
+	implementation 'mysql:mysql-connector-java:8.0.32'
 
 	// DEV
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
@@ -35,12 +36,10 @@ dependencies {
 
 	// TEST
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'com.h2database:h2'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	// 테스트용 Lombok 추가
-    testCompileOnly 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
-	 // 테스트용 H2 데이터베이스 추가
-    testImplementation 'com.h2database:h2'
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
 tasks.named('test') {
