@@ -1,14 +1,16 @@
 services:
-  postgres:
-    image: postgres
+  mysql:
+    image: mysql:8.0
     restart: always
     ports:
-      - 5432:5432
+      - 3306:3306
     environment:
-      POSTGRES_DB: dev
-      POSTGRES_PASSWORD: 123456
+      MYSQL_DATABASE: gonggu_db
+      MYSQL_USER: gonggu
+      MYSQL_ROOT_PASSWORD: gonggu
+      MYSQL_PASSWORD: gonggu
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
 
   redis:
     image: redis:6.2
@@ -30,7 +32,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    restart: always
     environment:  
       SPRING_PROFILES_ACTIVE: docker
     ports:
@@ -39,5 +40,5 @@ services:
 
 
 volumes:
-  postgres_data:
+  mysql_data:
   redis_data:
