@@ -18,9 +18,11 @@ repositories {
 }
 
 dependencies {
-	// DEFAULT
+	// WEB & VALIDATION
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework:spring-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	
+	// ANNOTATION PROCESSING
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
@@ -34,6 +36,7 @@ dependencies {
 
 	// TEST
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'com.h2database:h2'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
