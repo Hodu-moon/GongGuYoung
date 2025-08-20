@@ -11,7 +11,7 @@ function App() {
   const [uuids,setUuids] = useState<string[]>([])
 
   const handleButton = async () => {
-    const res = await axios.get("/api/uuid")
+    const res = await axios.get("/api/v1/products")
     setUuids((prev) => [...prev,res.data])
   }
 
