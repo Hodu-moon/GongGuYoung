@@ -46,7 +46,7 @@ public class ManagerClientImpl implements ManagerClient {
     }
     
     long hoursBetween = ChronoUnit.HOURS.between(this.apiKeyTimestamp, LocalDateTime.now());
-    return hoursBetween < 24;
+    return hoursBetween < 8760;
   }
 
   private String reissuedApiKey() {
