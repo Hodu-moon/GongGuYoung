@@ -2,16 +2,23 @@ package xyz.jinjin99.gongguyoung.backend.domain.product.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CurrentTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 
 @Entity
 @Table(name = "product")
 @Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
 public class Product {
     
     @Id
@@ -25,36 +32,16 @@ public class Product {
     private Long price;
     
     @Column(nullable = false)
-    private String category;
-    
-    @Column(nullable = false)
     private String imageUrl;
     
     @Column(columnDefinition = "TEXT")
     private String description;
     
     @Column(nullable = false)
+    @CurrentTimestamp
     private LocalDateTime createdAt;
     
     @Column(nullable = false)
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
-    
-    public Product(String name, Long price, String category, String imageUrl, String description) {
-        this.name = name;
-        this.price = price;
-        this.category = category;
-        this.imageUrl = imageUrl;
-        this.description = description;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-    
-    public void updateProduct(String name, Long price, String category, String imageUrl, String description) {
-        this.name = name;
-        this.price = price;
-        this.category = category;
-        this.imageUrl = imageUrl;
-        this.description = description;
-        this.updatedAt = LocalDateTime.now();
-    }
 }

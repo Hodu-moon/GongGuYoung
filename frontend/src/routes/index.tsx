@@ -7,12 +7,22 @@ export const Route = createFileRoute('/')({
   component: App,
 })
 
+type products = {
+  id: number
+  name: string
+  price: number
+  imageUrl : string
+  description : string
+  createdAt : string
+  updatedAt : String
+}
+
 function App() {
-  const [uuids,setUuids] = useState<string[]>([])
+  const [uuids,setUuids] = useState<products[]>([])
 
   const handleButton = async () => {
-    const res = await axios.get("/api/uuid")
-    setUuids((prev) => [...prev,res.data])
+    const res = await axios.get("/api/v1/products")
+    setUuids((prev) => [...prev,...res.data])
   }
 
   return (
@@ -21,7 +31,13 @@ function App() {
         Hello world
       </button>
       <br></br>
-      {uuids}
+      {uuids.map((product, index) => (
+        <div key={product.id || index}>
+          <h3>{product.name}</h3>
+          <p>Price: ${product.price}</p>
+          <p>{product.description}</p>
+        </div>
+      ))}
     </div>
   )
 }
