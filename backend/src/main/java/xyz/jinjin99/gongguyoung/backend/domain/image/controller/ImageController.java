@@ -24,8 +24,8 @@ public class ImageController {
   private final ImageService imageService;
 
   @GetMapping("/{id}")
-  public ResponseEntity<Resource> serveImage(@PathVariable Integer ino) {
-    Resource img = imageService.getImageById(ino);
+  public ResponseEntity<Resource> serveImage(@PathVariable Integer id) {
+    Resource img = imageService.getImageById(id);
 
     if (img == null) {
       return ResponseEntity.notFound().build();
