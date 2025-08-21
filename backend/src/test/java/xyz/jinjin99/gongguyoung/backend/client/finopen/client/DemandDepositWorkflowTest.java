@@ -88,7 +88,7 @@ class DemandDepositWorkflowTest {
      */
     private MemberRecord createTestUser(String email) {
         try {
-            MemberRecord member = memberClient.createMember(email);
+            MemberRecord member = memberClient.getOrCreateMember(email);
             log.info("테스트 사용자 생성 완료: {}", member);
             return member;
         } catch (Exception e) {
