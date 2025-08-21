@@ -5,7 +5,5 @@ import jakarta.validation.constraints.NotBlank;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.common.MemberRecord;
 
 public interface MemberClient {
-  MemberRecord createMember(@NotBlank @Email String userId);
-
-  MemberRecord searchMember(@NotBlank @Email String userId);
+  MemberRecord getOrCreateMember(@NotBlank @Email String userId);
 }
