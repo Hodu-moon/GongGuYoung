@@ -4,7 +4,7 @@ spring:
     username: sa
     password: 
     driver-class-name: org.h2.Driver
-  
+
   h2:
     console:
       enabled: true
@@ -13,6 +13,11 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+
+logging:
+  level:
+    xyz.jinjin99.gongguyoung: DEBUG
+
 
 fin-open:
   member-id: novelss5573@gmail.com
