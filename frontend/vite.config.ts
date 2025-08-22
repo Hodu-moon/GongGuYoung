@@ -1,22 +1,12 @@
-import { defineConfig } from "vite";
-import viteReact from "@vitejs/plugin-react";
-import { tanstackRouter  } from "@tanstack/router-plugin/vite";
-import { resolve } from "node:path";
 
-// https://vitejs.dev/config/
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { fileURLToPath, URL } from "node:url";
+
 export default defineConfig({
-  plugins: [tanstackRouter({ autoCodeSplitting: true }), viteReact()],
-  server: {
-    proxy: {
-      "/api": {
-        target: "http://localhost:8080",
-        changeOrigin: true,
-      },
-    },
-  },
+  plugins: [react()],
   resolve: {
-    alias: {
-      "@": resolve(__dirname, "./src"),
-    },
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
+  server: { port: 5173 },
 });
