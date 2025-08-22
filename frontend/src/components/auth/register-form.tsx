@@ -37,6 +37,9 @@ export function RegisterForm() {
         password: formData.password,
         name: formData.name,
       })
+      
+      // 회원가입 성공 시 로그인 페이지로 이동
+      window.location.href = '/auth/login'
     } catch (err) {
       setError(err instanceof Error ? err.message : "회원가입에 실패했습니다.")
     } finally {
