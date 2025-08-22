@@ -21,7 +21,7 @@ interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
   register: (userData: RegisterData) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   loading: boolean
 }
 
@@ -61,23 +61,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      // Mock login - in real app, call your API
-      const mockUser: User = {
-        id: "1",
-        email,
-        fullName: "김학생",
-        studentId: "2021123456",
-        university: {
-          id: "1",
-          name: "연세대학교",
-          domain: "yonsei.ac.kr",
+      const response = await fetch('/api/v1/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        isVerified: true,
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+        credentials: 'include', // 쿠키 포함
+      })
+
+      if (!response.ok) {
+        throw new Error('로그인에 실패했습니다.')
       }
 
-      setUser(mockUser)
-      localStorage.setItem("auth_token", "mock_token")
-      localStorage.setItem("user_data", JSON.stringify(mockUser))
+      // 쿠키에서 사용자 정보 읽기
+      const memberCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('member='))
+        ?.split('=')[1]
+
+      if (memberCookie) {
+        try {
+          // Base64 URL 디코딩을 위한 안전한 방법
+          const base64String = memberCookie.replace(/-/g, '+').replace(/_/g, '/')
+          const paddedBase64 = base64String + '='.repeat((4 - base64String.length % 4) % 4)
+          
+          // UTF-8 안전 디코딩
+          const binaryString = atob(paddedBase64)
+          const bytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          const utf8String = new TextDecoder('utf-8').decode(bytes)
+          const decoded = JSON.parse(utf8String)
+          
+          const loggedInUser: User = {
+            id: decoded.id.toString(),
+            email: decoded.email,
+            fullName: decoded.name,
+            studentId: undefined,
+            university: undefined,
+            isVerified: true,
+          }
+
+          setUser(loggedInUser)
+          localStorage.setItem("auth_token", decoded.userKey || "")
+          localStorage.setItem("user_data", JSON.stringify(loggedInUser))
+        } catch (decodeError) {
+          console.error("쿠키 디코딩 실패:", decodeError)
+          throw new Error("로그인 정보 처리에 실패했습니다.")
+        }
+      }
     } catch (error) {
       throw new Error("로그인에 실패했습니다.")
     }
@@ -109,10 +146,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("user_data")
+  const logout = async () => {
+    try {
+      await fetch('/api/v1/logout', {
+        method: 'POST',
+        credentials: 'include', // 쿠키 포함
+      })
+    } catch (error) {
+      console.error("로그아웃 요청 실패:", error)
+    } finally {
+      // API 호출 성공 여부와 관계없이 로컬 상태는 정리
+      setUser(null)
+      localStorage.removeItem("auth_token")
+      localStorage.removeItem("user_data")
+    }
   }
 
   return <AuthContext.Provider value={{ user, login, register, logout, loading }}>{children}</AuthContext.Provider>
