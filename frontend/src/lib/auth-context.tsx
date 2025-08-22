@@ -28,9 +28,7 @@ interface AuthContextType {
 interface RegisterData {
   email: string
   password: string
-  fullName: string
-  studentId: string
-  universityId: string
+  name: string
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -87,23 +85,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (userData: RegisterData) => {
     try {
-      // Mock registration - in real app, call your API
-      const newUser: User = {
-        id: Date.now().toString(),
-        email: userData.email,
-        fullName: userData.fullName,
-        studentId: userData.studentId,
-        university: {
-          id: userData.universityId,
-          name: "연세대학교", // Would be fetched from API
-          domain: "yonsei.ac.kr",
+      const response = await fetch('/api/v1/members', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        isVerified: false,
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.password,
+          name: userData.name,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('회원가입에 실패했습니다.')
       }
 
-      setUser(newUser)
-      localStorage.setItem("auth_token", "mock_token")
-      localStorage.setItem("user_data", JSON.stringify(newUser))
+      const signupResponse = await response.json()
+      
+      // 회원가입 성공해도 자동 로그인하지 않음
     } catch (error) {
       throw new Error("회원가입에 실패했습니다.")
     }
