@@ -62,7 +62,7 @@ export default function HomePage() {
           <div className="space-y-4">
             <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader className="text-center pb-2">
-                <p className="text-sm text-gray-600">공학대 학생증</p>
+                <p className="text-sm text-gray-600">학생증</p>
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <div className="flex items-center justify-center gap-3">
@@ -70,8 +70,15 @@ export default function HomePage() {
                     <span className="text-white font-bold">👩‍🎓</span>
                   </div>
                   <div className="text-left">
-                    <p className="text-sm text-gray-600">공학대/컴퓨터</p>
-                    <p className="font-bold text-lg">{user ? user.fullName : "로그인이 필요합니다"}</p>
+                    {user ? (
+                      <>
+                        <p className="text-sm text-gray-600">한국대학교 MSA학과</p>
+                        <p className="font-bold text-lg">{user.fullName}</p>
+                        <p className="text-xs text-gray-500">202412345</p>
+                      </>
+                    ) : (
+                      <p className="font-bold text-lg">로그인이 필요합니다</p>
+                    )}
                   </div>
                 </div>
                 <Button className="w-full bg-hey-gradient hover:opacity-90 text-white">
@@ -89,15 +96,15 @@ export default function HomePage() {
                     <Link to="/dashboard">
                       <Button className="w-full bg-hey-gradient hover:opacity-90 text-white text-sm">
                         <Plus className="w-4 h-4 mr-1" />
-                        공구 참여
+                        공동구매
                       </Button>
                     </Link>
-                    <Link to="/bnpl">
+                    <Link to="/my-page">
                       <Button
                         variant="outline"
                         className="w-full border-purple-300 text-purple-600 hover:bg-purple-50 text-sm bg-transparent"
                       >
-                        BNPL 조회
+                        마이페이지
                       </Button>
                     </Link>
                   </div>
@@ -167,54 +174,54 @@ export default function HomePage() {
                   className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-purple-50 transition-colors"
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex items-center justify-center">
-                    🧩
+                    💬
                   </div>
-                  <span className="text-xs text-gray-700 text-center">퀴즈</span>
+                  <span className="text-xs text-gray-700 text-center">커뮤니티</span>
                 </Link>
 
-                <Link to="/dashboard"
+                <Link to="/bnpl"
                   className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-purple-50 transition-colors"
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-xl flex items-center justify-center">
-                    🏛️
+                    💳
                   </div>
-                  <span className="text-xs text-gray-700 text-center">도서관</span>
+                  <span className="text-xs text-gray-700 text-center">BNPL</span>
                 </Link>
 
                 <Link to="/dashboard"
                   className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-purple-50 transition-colors"
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-pink-100 to-pink-200 rounded-xl flex items-center justify-center">
-                    📢
+                    🏪
                   </div>
-                  <span className="text-xs text-gray-700 text-center">공지사항</span>
+                  <span className="text-xs text-gray-700 text-center">학교상점</span>
                 </Link>
 
                 <Link to="/dashboard"
                   className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-purple-50 transition-colors"
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
-                    ⚙️
+                    🍽️
                   </div>
-                  <span className="text-xs text-gray-700 text-center">설정</span>
+                  <span className="text-xs text-gray-700 text-center">학식메뉴</span>
                 </Link>
 
                 <Link to="/dashboard"
                   className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-purple-50 transition-colors"
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-teal-100 to-teal-200 rounded-xl flex items-center justify-center">
-                    🏢
+                    🎓
                   </div>
-                  <span className="text-xs text-gray-700 text-center">행정실 예약</span>
+                  <span className="text-xs text-gray-700 text-center">학과 행사</span>
                 </Link>
 
                 <Link to="/dashboard"
                   className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-purple-50 transition-colors"
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-red-100 to-red-200 rounded-xl flex items-center justify-center">
-                    🔒
+                    📖
                   </div>
-                  <span className="text-xs text-gray-700 text-center">전자출입구</span>
+                  <span className="text-xs text-gray-700 text-center">과제제출</span>
                 </Link>
               </div>
             ) : (
