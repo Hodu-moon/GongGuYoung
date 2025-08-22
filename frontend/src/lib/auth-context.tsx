@@ -41,11 +41,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check for existing session
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem("auth_token")
-        if (token) {
-          // In a real app, verify token with backend
+        // 먼저 쿠키에서 사용자 정보 확인
+        const memberCookie = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('member='))
+          ?.split('=')[1]
+
+        if (memberCookie) {
+          try {
+            // Base64 URL 디코딩
+            const base64String = memberCookie.replace(/-/g, '+').replace(/_/g, '/')
+            const paddedBase64 = base64String + '='.repeat((4 - base64String.length % 4) % 4)
+            
+            // UTF-8 안전 디코딩
+            const binaryString = atob(paddedBase64)
+            const bytes = new Uint8Array(binaryString.length)
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i)
+            }
+            const utf8String = new TextDecoder('utf-8').decode(bytes)
+            const decoded = JSON.parse(utf8String)
+            
+            const restoredUser: User = {
+              id: decoded.id.toString(),
+              email: decoded.email,
+              fullName: decoded.name,
+              studentId: undefined,
+              university: undefined,
+              isVerified: true,
+            }
+
+            setUser(restoredUser)
+            localStorage.setItem("auth_token", decoded.userKey || "")
+            localStorage.setItem("user_data", JSON.stringify(restoredUser))
+          } catch (decodeError) {
+            console.error("쿠키 디코딩 실패:", decodeError)
+            // 쿠키가 손상된 경우 정리
+            document.cookie = 'member=; Max-Age=0; path=/'
+            localStorage.removeItem("auth_token")
+            localStorage.removeItem("user_data")
+          }
+        } else {
+          // 쿠키가 없으면 localStorage에서 확인 (fallback)
+          const token = localStorage.getItem("auth_token")
           const userData = localStorage.getItem("user_data")
-          if (userData) {
+          if (token && userData) {
             setUser(JSON.parse(userData))
           }
         }
