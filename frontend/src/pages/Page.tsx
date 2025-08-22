@@ -40,7 +40,7 @@ export default function HomePage() {
                   <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2">
                     <Bell className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2" onClick={logout}>
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2" onClick={() => logout()}>
                     <LogOut className="w-4 h-4" />
                   </Button>
                 </>
