@@ -1,8 +1,6 @@
 
 
-import type React from "react"
-
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from '@/compat/navigation'
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { Button } from "@/components/ui/button"
@@ -10,128 +8,322 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ProductSearchModal } from "@/components/product-search-modal"
-import { ArrowLeft, Upload, Eye, Calculator, Search } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ArrowLeft, ShoppingBag, Calendar, Target, DollarSign, Image as ImageIcon, FileText, Sparkles, Check } from "lucide-react"
 import { Link } from 'react-router-dom'
 
-const discountTiers = [
-  { minQuantity: 1, maxQuantity: 9, discountRate: 0 },
-  { minQuantity: 10, maxQuantity: 19, discountRate: 5 },
-  { minQuantity: 20, maxQuantity: 49, discountRate: 10 },
-  { minQuantity: 50, maxQuantity: 99, discountRate: 15 },
-  { minQuantity: 100, maxQuantity: Number.POSITIVE_INFINITY, discountRate: 20 },
+// Mock products data (실제로는 백엔드 API에서 가져와야 함)
+const mockProducts = [
+  { id: 1, name: "생화학 교재", price: 45000, imageUrl: "/biology-textbook.png", description: "최신 생화학 이론과 실습을 위한 필수 교재" },
+  { id: 2, name: "아이패드 (10세대)", price: 569000, imageUrl: "/ipad-tablet.png", description: "학습과 노트 필기를 위한 최적의 태블릿" },
+  { id: 3, name: "간호학과 실습복", price: 89000, imageUrl: "/nursing-uniform.png", description: "고품질 간호학과 전용 실습복 세트" },
 ]
 
 export default function CreateCampaignPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [imagePreview, setImagePreview] = useState<string>("")
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false)
-  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [formData, setFormData] = useState({
     title: "",
-    productName: "",
-    description: "",
-    originalPrice: "",
-    targetQuantity: "",
-    endDateTime: "",
-    imageUrl: "",
-    address: "",
-    detailAddress: "",
-    contactInfo: "",
-    terms: "",
+    context: "",
+    productId: "",
+    endAt: "",
+    targetCount: "",
+    discountedPrice: "",
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const steps = [
+    { number: 1, title: "상품 선택", icon: ShoppingBag, description: "공동구매할 상품을 선택하세요" },
+    { number: 2, title: "공구 설정", icon: Target, description: "목표 수량과 할인가를 설정하세요" },
+    { number: 3, title: "상세 정보", icon: FileText, description: "제목과 설명을 작성하세요" },
+    { number: 4, title: "마감 설정", icon: Calendar, description: "마감일을 설정하고 등록하세요" },
+  ]
+
+  const handleSubmit = async () => {
+    if (currentStep < 4) {
+      setCurrentStep(currentStep + 1)
+      return
+    }
+
     setIsSubmitting(true)
 
-    // Mock API call
-    setTimeout(() => {
+    // 백엔드 API 호출 (Mock)
+    const requestData = {
+      title: formData.title,
+      context: formData.context,
+      productId: parseInt(formData.productId),
+      endAt: formData.endAt,
+      targetCount: parseInt(formData.targetCount),
+      discountedPrice: parseInt(formData.discountedPrice),
+    }
+
+    try {
+      // 실제로는 POST /api/v1/group-purchase 호출
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
       alert("공구가 성공적으로 생성되었습니다!")
       router.push("/dashboard")
-    }, 1000)
+    } catch (error) {
+      alert("공구 생성에 실패했습니다. 다시 시도해주세요.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    if (field === "imageUrl" && value) {
-      setImagePreview(value)
+  }
+
+  const handleProductSelect = (productId: number) => {
+    const product = mockProducts.find(p => p.id === productId)
+    if (product) {
+      setSelectedProduct(product)
+      setFormData(prev => ({ ...prev, productId: productId.toString() }))
     }
   }
 
-  const handleProductSelect = (product: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      productName: product.name,
-      originalPrice: product.price.toString(),
-      imageUrl: product.image,
-      description: product.description,
-    }))
-    setImagePreview(product.image)
+  const canProceedToNextStep = () => {
+    switch (currentStep) {
+      case 1: return selectedProduct !== null
+      case 2: return formData.targetCount && formData.discountedPrice
+      case 3: return formData.title && formData.context
+      case 4: return formData.endAt
+      default: return false
+    }
   }
 
-  const handleAddressSelect = (selectedAddress: string) => {
-    setFormData((prev) => ({ ...prev, address: selectedAddress }))
-    setIsAddressModalOpen(false)
+  const getSavingsAmount = () => {
+    if (!selectedProduct || !formData.discountedPrice) return 0
+    return selectedProduct.price - parseInt(formData.discountedPrice)
   }
 
-  const calculateDiscountInfo = () => {
-    const quantity = Number(formData.targetQuantity)
-    const originalPrice = Number(formData.originalPrice)
-
-    if (!quantity || !originalPrice) return { discountRate: 0, discountedPrice: 0, savings: 0 }
-
-    const tier = discountTiers.find((tier) => quantity >= tier.minQuantity && quantity <= tier.maxQuantity)
-    const discountRate = tier?.discountRate || 0
-    const discountedPrice = originalPrice * (1 - discountRate / 100)
-    const savings = originalPrice - discountedPrice
-
-    return { discountRate, discountedPrice, savings }
+  const getDiscountPercentage = () => {
+    if (!selectedProduct || !formData.discountedPrice) return 0
+    const savings = getSavingsAmount()
+    return Math.round((savings / selectedProduct.price) * 100)
   }
-
-  const { discountRate, discountedPrice, savings } = calculateDiscountInfo()
-
-  const mockAddresses = [
-    "서울특별시 강남구 테헤란로 123",
-    "서울특별시 서초구 서초대로 456",
-    "서울특별시 송파구 올림픽로 789",
-    "서울특별시 마포구 홍익로 321",
-    "서울특별시 종로구 종로 654",
-    "경기도 성남시 분당구 판교역로 987",
-    "경기도 수원시 영통구 광교로 147",
-    "인천광역시 연수구 송도과학로 258",
-  ]
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 animate-fade-in">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
         <div className="container mx-auto px-4 py-8">
-          <div className="mb-6">
+          {/* Header */}
+          <div className="mb-8">
             <Link to="/dashboard">
-              <Button variant="ghost" className="mb-4 hover:bg-white/50 transition-all duration-200">
+              <Button variant="ghost" className="mb-6 hover:bg-white/60 transition-all duration-200">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 대시보드로 돌아가기
               </Button>
             </Link>
+            
             <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-purple-700 mb-2">새 공동구매 만들기</h1>
-              <p className="text-gray-600 text-lg">같은 대학 학생들과 함께 구매할 상품을 등록하세요.</p>
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <h1 className="text-3xl font-bold text-purple-800">새 공동구매 만들기</h1>
+              </div>
+              <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+                단계별로 간단하게 공동구매를 등록하고, 같은 대학 학생들과 함께 더 저렴하게 구매하세요.
+              </p>
+            </div>
+
+            {/* Progress Steps */}
+            <div className="max-w-4xl mx-auto mb-8">
+              <div className="flex items-center justify-between relative">
+                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 -translate-y-1/2 z-0"></div>
+                <div className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600 -translate-y-1/2 z-0 transition-all duration-500"
+                     style={{ width: `${((currentStep - 1) / 3) * 100}%` }}></div>
+                
+                {steps.map((step, index) => {
+                  const Icon = step.icon
+                  const isActive = currentStep === step.number
+                  const isCompleted = currentStep > step.number
+                  
+                  return (
+                    <div key={step.number} className="flex flex-col items-center z-10">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                        isCompleted 
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' 
+                          : isActive 
+                            ? 'bg-white border-2 border-purple-600 text-purple-600 shadow-lg' 
+                            : 'bg-white border-2 border-gray-200 text-gray-400'
+                      }`}>
+                        {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                      </div>
+                      <div className="mt-2 text-center">
+                        <div className={`text-sm font-medium ${isActive || isCompleted ? 'text-purple-700' : 'text-gray-400'}`}>
+                          {step.title}
+                        </div>
+                        <div className="text-xs text-gray-500 max-w-24 mt-1">{step.description}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
 
-          <Card className="max-w-4xl mx-auto shadow-xl border-0 animate-slide-up bg-white">
-            <CardHeader className="bg-white border-b border-gray-200 rounded-t-lg">
-              <CardTitle className="text-2xl text-purple-700">공구 정보 입력</CardTitle>
+          {/* Main Content Card */}
+          <Card className="max-w-4xl mx-auto shadow-xl border-0 bg-white rounded-2xl overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-8">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-full">
+                  {React.createElement(steps[currentStep - 1].icon, { className: "w-6 h-6" })}
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-bold text-white">
+                    {steps[currentStep - 1].title}
+                  </CardTitle>
+                  <p className="text-purple-100 mt-1">{steps[currentStep - 1].description}</p>
+                </div>
+              </div>
             </CardHeader>
+            
             <CardContent className="p-8 bg-white">
-              <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Basic Information Section */}
+              {/* Step 1: 상품 선택 */}
+              {currentStep === 1 && (
                 <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-purple-700 border-b border-purple-200 pb-2">기본 정보</h3>
+                  <div className="text-center mb-8">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">공동구매할 상품을 선택하세요</h3>
+                    <p className="text-gray-600">미리 등록된 상품 목록에서 선택할 수 있습니다.</p>
+                  </div>
+                  
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {mockProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        onClick={() => handleProductSelect(product.id)}
+                        className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-lg ${
+                          selectedProduct?.id === product.id
+                            ? 'border-purple-600 bg-purple-50 shadow-lg'
+                            : 'border-gray-200 hover:border-purple-300'
+                        }`}
+                      >
+                        <div className="aspect-square mb-4 rounded-lg overflow-hidden bg-gray-100">
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = "/placeholder.svg"
+                            }}
+                          />
+                        </div>
+                        <div className="text-center">
+                          <h4 className="font-semibold text-gray-800 mb-2">{product.name}</h4>
+                          <p className="text-sm text-gray-600 mb-3 h-10">{product.description}</p>
+                          <div className="flex items-center justify-center gap-2">
+                            <DollarSign className="w-4 h-4 text-green-600" />
+                            <span className="text-lg font-bold text-green-600">
+                              {product.price.toLocaleString()}원
+                            </span>
+                          </div>
+                          {selectedProduct?.id === product.id && (
+                            <div className="mt-3">
+                              <Badge className="bg-purple-600">선택됨</Badge>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
+              {/* Step 2: 공구 설정 */}
+              {currentStep === 2 && (
+                <div className="space-y-8">
+                  {selectedProduct && (
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+                      <div className="flex items-center gap-4 mb-4">
+                        <img
+                          src={selectedProduct.imageUrl}
+                          alt={selectedProduct.name}
+                          className="w-16 h-16 object-cover rounded-lg"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder.svg"
+                          }}
+                        />
+                        <div>
+                          <h4 className="font-semibold text-gray-800">{selectedProduct.name}</h4>
+                          <p className="text-gray-600">정가: {selectedProduct.price.toLocaleString()}원</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <Label htmlFor="targetCount" className="text-sm font-semibold text-gray-700">
+                        목표 수량 (최소 주문 개수) *
+                      </Label>
+                      <div className="relative">
+                        <Target className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                          id="targetCount"
+                          type="number"
+                          placeholder="20"
+                          value={formData.targetCount}
+                          onChange={(e) => handleInputChange("targetCount", e.target.value)}
+                          className="pl-10 h-12 text-lg border-2 focus:border-purple-600"
+                          min="1"
+                        />
+                      </div>
+                      <p className="text-sm text-gray-500">최소 몇 명이 참여해야 공구가 성사되는지 설정하세요.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="discountedPrice" className="text-sm font-semibold text-gray-700">
+                        할인된 가격 (원) *
+                      </Label>
+                      <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                          id="discountedPrice"
+                          type="number"
+                          placeholder="35000"
+                          value={formData.discountedPrice}
+                          onChange={(e) => handleInputChange("discountedPrice", e.target.value)}
+                          className="pl-10 h-12 text-lg border-2 focus:border-purple-600"
+                          min="1"
+                        />
+                      </div>
+                      <p className="text-sm text-gray-500">공동구매 시 적용될 할인 가격을 입력하세요.</p>
+                    </div>
+                  </div>
+
+                  {selectedProduct && formData.discountedPrice && (
+                    <div className="bg-white border-2 border-green-200 rounded-xl p-6">
+                      <div className="text-center mb-4">
+                        <h4 className="text-lg font-semibold text-gray-800 mb-2">💰 할인 정보</h4>
+                      </div>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div className="text-center p-4 bg-green-50 rounded-lg">
+                          <div className="text-2xl font-bold text-green-600">{getDiscountPercentage()}%</div>
+                          <div className="text-sm text-gray-600">할인율</div>
+                        </div>
+                        <div className="text-center p-4 bg-blue-50 rounded-lg">
+                          <div className="text-2xl font-bold text-blue-600">{parseInt(formData.discountedPrice).toLocaleString()}원</div>
+                          <div className="text-sm text-gray-600">할인 가격</div>
+                        </div>
+                        <div className="text-center p-4 bg-red-50 rounded-lg">
+                          <div className="text-2xl font-bold text-red-600">-{getSavingsAmount().toLocaleString()}원</div>
+                          <div className="text-sm text-gray-600">절약 금액</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 3: 상세 정보 */}
+              {currentStep === 3 && (
+                <div className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="title" className="text-sm font-medium">
+                    <Label htmlFor="title" className="text-sm font-semibold text-gray-700">
                       공구 제목 *
                     </Label>
                     <Input
@@ -139,293 +331,123 @@ export default function CreateCampaignPage() {
                       placeholder="예: 생화학 교재 공동구매 (20명 모집)"
                       value={formData.title}
                       onChange={(e) => handleInputChange("title", e.target.value)}
-                      className="transition-all duration-200 focus:ring-2 focus:ring-purple-300"
-                      required
+                      className="h-12 text-lg border-2 focus:border-purple-600"
                     />
+                    <p className="text-sm text-gray-500">다른 학생들이 쉽게 이해할 수 있는 제목을 작성하세요.</p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="productName" className="text-sm font-medium">
-                      상품명 *
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="productName"
-                        placeholder="검색 버튼을 눌러 상품을 선택하세요"
-                        value={formData.productName}
-                        onChange={(e) => handleInputChange("productName", e.target.value)}
-                        className="transition-all duration-200 focus:ring-2 focus:ring-purple-300"
-                        required
-                        readOnly
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsProductModalOpen(true)}
-                        className="px-4 hover:bg-purple-50 hover:border-purple-300"
-                      >
-                        <Search className="w-4 h-4 mr-2" />
-                        검색
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Price Information Section */}
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-purple-700 border-b border-purple-200 pb-2">가격 정보</h3>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="originalPrice" className="text-sm font-medium">
-                        정가 (원) *
-                      </Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="originalPrice"
-                          type="number"
-                          placeholder="상품 검색으로 자동 입력"
-                          value={formData.originalPrice}
-                          onChange={(e) => handleInputChange("originalPrice", e.target.value)}
-                          className="transition-all duration-200 focus:ring-2 focus:ring-purple-300"
-                          required
-                          readOnly
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setIsProductModalOpen(true)}
-                          className="px-4 hover:bg-purple-50 hover:border-purple-300"
-                        >
-                          <Search className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="targetQuantity" className="text-sm font-medium">
-                        목표 수량 (명) *
-                      </Label>
-                      <Input
-                        id="targetQuantity"
-                        type="number"
-                        placeholder="20"
-                        value={formData.targetQuantity}
-                        onChange={(e) => handleInputChange("targetQuantity", e.target.value)}
-                        className="transition-all duration-200 focus:ring-2 focus:ring-purple-300"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {formData.originalPrice && formData.targetQuantity && (
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Calculator className="w-5 h-5 text-purple-600" />
-                        <h4 className="font-semibold text-purple-700">할인 정보</h4>
-                      </div>
-                      <div className="grid md:grid-cols-3 gap-4">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-purple-600">{discountRate}%</div>
-                          <div className="text-sm text-gray-600">할인율</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-green-600">{discountedPrice.toLocaleString()}원</div>
-                          <div className="text-sm text-gray-600">할인된 가격</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-red-600">-{savings.toLocaleString()}원</div>
-                          <div className="text-sm text-gray-600">절약 금액</div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 p-4 bg-white rounded border">
-                        <h5 className="font-medium text-gray-700 mb-2">할인 단계별 정보</h5>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
-                          {discountTiers.map((tier, index) => (
-                            <div
-                              key={index}
-                              className={`p-2 rounded text-center ${
-                                Number(formData.targetQuantity) >= tier.minQuantity &&
-                                Number(formData.targetQuantity) <= tier.maxQuantity
-                                  ? "bg-purple-100 text-purple-700 font-semibold"
-                                  : "bg-gray-50 text-gray-600"
-                              }`}
-                            >
-                              <div>
-                                {tier.minQuantity}
-                                {tier.maxQuantity === Number.POSITIVE_INFINITY ? "+" : `-${tier.maxQuantity}`}개
-                              </div>
-                              <div>{tier.discountRate}% 할인</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Campaign Settings Section */}
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-purple-700 border-b border-purple-200 pb-2">공구 설정</h3>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="endDateTime" className="text-sm font-medium">
-                      마감일시 *
-                    </Label>
-                    <Input
-                      id="endDateTime"
-                      type="datetime-local"
-                      value={formData.endDateTime}
-                      onChange={(e) => handleInputChange("endDateTime", e.target.value)}
-                      className="transition-all duration-200 focus:ring-2 focus:ring-purple-300 w-auto"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Image Section */}
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-purple-700 border-b border-purple-200 pb-2">상품 이미지</h3>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="imageUrl" className="text-sm font-medium">
-                        이미지 URL
-                      </Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="imageUrl"
-                          type="url"
-                          placeholder="상품 검색으로 자동 입력"
-                          value={formData.imageUrl}
-                          onChange={(e) => handleInputChange("imageUrl", e.target.value)}
-                          className="transition-all duration-200 focus:ring-2 focus:ring-purple-300"
-                          readOnly
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setIsProductModalOpen(true)}
-                          className="px-4 hover:bg-purple-50 hover:border-purple-300"
-                        >
-                          <Search className="w-4 h-4" />
-                        </Button>
-
-                      </div>
-                    </div>
-
-                    {imagePreview && (
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium flex items-center gap-2">
-                          <Eye className="w-4 h-4" />
-                          미리보기
-                        </Label>
-                        <div className="border rounded-lg p-2">
-                          <img
-                            src={imagePreview || "/placeholder.svg"}
-                            alt="상품 미리보기"
-                            className="w-full h-32 object-cover rounded"
-                            onError={() => setImagePreview("")}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-purple-700 border-b border-purple-200 pb-2">게시물 내용</h3>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description" className="text-sm font-medium">
+                    <Label htmlFor="context" className="text-sm font-semibold text-gray-700">
                       상품 설명 *
                     </Label>
                     <Textarea
-                      id="description"
+                      id="context"
                       placeholder="상품에 대한 자세한 설명을 입력하세요..."
-                      value={formData.description}
-                      onChange={(e) => handleInputChange("description", e.target.value)}
-                      rows={6}
-                      className="transition-all duration-200 focus:ring-2 focus:ring-purple-300"
-                      required
+                      value={formData.context}
+                      onChange={(e) => handleInputChange("context", e.target.value)}
+                      rows={8}
+                      className="border-2 focus:border-purple-600 text-base"
                     />
+                    <p className="text-sm text-gray-500">상품의 특징, 사용법, 주의사항 등을 자세히 설명해주세요.</p>
                   </div>
+                </div>
+              )}
 
+              {/* Step 4: 마감 설정 */}
+              {currentStep === 4 && (
+                <div className="space-y-8">
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4">📝 공구 요약</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">상품:</span>
+                        <span className="font-medium">{selectedProduct?.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">목표 수량:</span>
+                        <span className="font-medium">{formData.targetCount}명</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">할인 가격:</span>
+                        <span className="font-medium text-green-600">{parseInt(formData.discountedPrice || "0").toLocaleString()}원</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">절약 금액:</span>
+                        <span className="font-medium text-red-600">-{getSavingsAmount().toLocaleString()}원</span>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="contactInfo" className="text-sm font-medium">
-                      연락처 정보
+                    <Label htmlFor="endAt" className="text-sm font-semibold text-gray-700">
+                      마감일시 *
                     </Label>
-                    <Input
-                      id="contactInfo"
-                      placeholder="전화번호 010-1234-5678"
-                      value={formData.contactInfo}
-                      onChange={(e) => handleInputChange("contactInfo", e.target.value)}
-                      className="transition-all duration-200 focus:ring-2 focus:ring-purple-300"
-                    />
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        id="endAt"
+                        type="datetime-local"
+                        value={formData.endAt}
+                        onChange={(e) => handleInputChange("endAt", e.target.value)}
+                        className="pl-10 h-12 text-lg border-2 focus:border-purple-600"
+                        min={new Date().toISOString().slice(0, 16)}
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500">공동구매 신청을 받을 마감 날짜와 시간을 설정하세요.</p>
                   </div>
-
                 </div>
+              )}
 
-                <div className="flex gap-4 pt-6 border-t border-gray-200">
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-hey-gradient hover:opacity-90 text-white font-semibold py-3 transition-all duration-200 transform hover:scale-105"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "생성 중..." : "공구 생성하기"}
-                  </Button>
-                  <Link to="/dashboard">
+              {/* Navigation Buttons */}
+              <div className="flex justify-between items-center pt-8 border-t border-gray-200 mt-8">
+                <div>
+                  {currentStep > 1 && (
                     <Button
                       type="button"
                       variant="outline"
-                      className="px-8 py-3 hover:bg-gray-50 transition-all duration-200 bg-transparent"
+                      onClick={() => setCurrentStep(currentStep - 1)}
+                      className="px-6 py-3 border-2 border-gray-300 hover:border-purple-600"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      이전 단계
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="flex gap-3">
+                  <Link to="/dashboard">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="px-6 py-3 text-gray-600 hover:bg-gray-100"
                     >
                       취소
                     </Button>
                   </Link>
+                  
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={!canProceedToNextStep() || isSubmitting}
+                    className={`px-8 py-3 font-semibold transition-all duration-200 ${
+                      currentStep === 4
+                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
+                        : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white'
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      "생성 중..."
+                    ) : currentStep === 4 ? (
+                      "공구 생성하기"
+                    ) : (
+                      "다음 단계"
+                    )}
+                  </Button>
                 </div>
-              </form>
+              </div>
             </CardContent>
           </Card>
         </div>
-
-        {isAddressModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-purple-700">주소 검색</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsAddressModalOpen(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </Button>
-              </div>
-
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {mockAddresses.map((address, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleAddressSelect(address)}
-                    className="w-full text-left p-3 rounded-lg border hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
-                  >
-                    {address}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <ProductSearchModal
-          isOpen={isProductModalOpen}
-          onClose={() => setIsProductModalOpen(false)}
-          onSelectProduct={handleProductSelect}
-        />
       </div>
     </AuthGuard>
   )
