@@ -34,7 +34,8 @@ public class GroupPurchaseServiceImpl implements GroupPurchaseService {
                 request.getTitle(),
                 request.getContext(),
                 request.getTargetCount(),
-                request.getEndAt()
+                request.getEndAt(),
+                request.getDiscountedPrice()
         );
         
         GroupPurchase savedGroupPurchase = groupPurchaseRepository.save(groupPurchase);

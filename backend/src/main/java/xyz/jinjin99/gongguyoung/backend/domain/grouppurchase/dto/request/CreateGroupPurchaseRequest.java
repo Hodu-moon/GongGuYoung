@@ -15,4 +15,5 @@ public class CreateGroupPurchaseRequest {
   private Integer productId;
   private LocalDateTime endAt;
   private Integer targetCount;
+  private Long discountedPrice;
 }

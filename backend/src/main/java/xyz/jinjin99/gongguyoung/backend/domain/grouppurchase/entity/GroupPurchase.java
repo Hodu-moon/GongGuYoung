@@ -34,6 +34,9 @@ public class GroupPurchase {
     private String context;
 
     @Column(nullable = false)
+    private Long discountedPrice;
+
+    @Column(nullable = false)
     private Integer targetCount;
 
     @Column(nullable = false)
@@ -56,13 +59,14 @@ public class GroupPurchase {
     @OneToMany(mappedBy = "groupPurchase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GroupPurchaseParticipant> participants = new ArrayList<>();
 
-    public GroupPurchase(Product product, String title, String context, Integer targetCount, LocalDateTime endAt) {
+    public GroupPurchase(Product product, String title, String context, Integer targetCount, LocalDateTime endAt, Long discountedPrice) {
         this.product = product;
         this.targetCount = targetCount;
         this.context = context;
         this.title = title;
         this.endAt = endAt;
         this.currentCount = 0;
+        this.discountedPrice = discountedPrice;
         this.status = GroupPurchaseStatus.WAITING;
     }
 
