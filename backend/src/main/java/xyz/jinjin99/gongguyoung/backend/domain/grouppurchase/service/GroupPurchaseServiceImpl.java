@@ -21,9 +21,11 @@ public class GroupPurchaseServiceImpl implements GroupPurchaseService {
     
     private final GroupPurchaseRepository groupPurchaseRepository;
     private final ProductRepository productRepository;
+    private final DelayedJobService delayedJobService;
     
     @Override
-    public GroupPurchaseResponse createGroupPurchase(CreateGroupPurchaseRequest request) {
+    public GroupPurchaseResponse createGroupPurchaseAndRegisterScheduling(CreateGroupPurchaseRequest request) {
+        // 그룹 구매 단계
         Product product = productRepository.findById(request.getProductId().longValue())
                 .orElseThrow(() -> new ProductNotFoundException(request.getProductId().longValue()));
         
@@ -36,6 +38,10 @@ public class GroupPurchaseServiceImpl implements GroupPurchaseService {
         );
         
         GroupPurchase savedGroupPurchase = groupPurchaseRepository.save(groupPurchase);
+        
+        // 스케쥴링 단계
+        delayedJobService.scheduleGroupPurchaseExpiry(savedGroupPurchase.getId(), request.getEndAt());
+        
         return GroupPurchaseResponse.from(savedGroupPurchase);
     }
     

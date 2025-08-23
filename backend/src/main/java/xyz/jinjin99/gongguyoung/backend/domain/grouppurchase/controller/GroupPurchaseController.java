@@ -24,7 +24,7 @@ public class GroupPurchaseController {
 
   @PostMapping
   public ResponseEntity<GroupPurchaseResponse> createGroupPurchase(@RequestBody CreateGroupPurchaseRequest request) {
-    GroupPurchaseResponse groupPurchase = groupPurchaseService.createGroupPurchase(request);
+    GroupPurchaseResponse groupPurchase = groupPurchaseService.createGroupPurchaseAndRegisterScheduling(request);
     return ResponseEntity.ok(groupPurchase);
   }
 

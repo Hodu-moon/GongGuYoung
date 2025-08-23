@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface GroupPurchaseService {
     
-    GroupPurchaseResponse createGroupPurchase(CreateGroupPurchaseRequest request);
+    GroupPurchaseResponse createGroupPurchaseAndRegisterScheduling(CreateGroupPurchaseRequest request);
     
     List<GroupPurchaseResponse> getAllGroupPurchases();
 }
