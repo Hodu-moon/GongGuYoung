@@ -120,11 +120,11 @@ export default function CreateCampaignPage() {
             </div>
           </div>
 
-          <Card className="max-w-4xl mx-auto shadow-xl border-0 animate-slide-up">
-            <CardHeader className="bg-white border-b border-purple-200 rounded-t-lg">
+          <Card className="max-w-4xl mx-auto shadow-xl border-0 animate-slide-up bg-white">
+            <CardHeader className="bg-white border-b border-gray-200 rounded-t-lg">
               <CardTitle className="text-2xl text-purple-700">공구 정보 입력</CardTitle>
             </CardHeader>
-            <CardContent className="p-8">
+            <CardContent className="p-8 bg-white">
               <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Basic Information Section */}
                 <div className="space-y-6">

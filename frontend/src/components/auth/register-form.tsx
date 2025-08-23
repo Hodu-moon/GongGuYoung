@@ -19,6 +19,7 @@ export function RegisterForm() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [passwordError, setPasswordError] = useState("")
   const { register } = useAuth()
   const navigate = useNavigate()
 
@@ -26,6 +27,13 @@ export function RegisterForm() {
     e.preventDefault()
     setLoading(true)
     setError("")
+
+    // 비밀번호 길이 검증
+    if (formData.password.length < 8) {
+      setError("비밀번호는 8자 이상이어야 합니다.")
+      setLoading(false)
+      return
+    }
 
     if (formData.password !== formData.passwordConfirm) {
       setError("비밀번호가 일치하지 않습니다.")
@@ -88,9 +96,19 @@ export function RegisterForm() {
               type="password"
               placeholder="8자 이상 입력하세요"
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              onChange={(e) => {
+                const password = e.target.value
+                setFormData({ ...formData, password })
+                // 실시간 비밀번호 길이 검증
+                if (password.length > 0 && password.length < 8) {
+                  setPasswordError("비밀번호는 8자 이상이어야 합니다.")
+                } else {
+                  setPasswordError("")
+                }
+              }}
               required
             />
+            {passwordError && <div className="text-red-500 text-sm">{passwordError}</div>}
           </div>
 
           <div className="space-y-2">
