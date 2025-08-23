@@ -16,6 +16,7 @@ public class FinOpenHttpClient {
 
   private final RestClient finOpenApiRestClient;
   private final ObjectMapper objectMapper;
+  private final ManagerClient managerClient;
 
   /**
    * POST 요청 공통 메서드 (endpoint에서 API명 자동 추출)
@@ -27,6 +28,7 @@ public class FinOpenHttpClient {
         .header(request.getHeader().toBuilder()
             .apiName(apiName)
             .apiServiceCode(apiName)
+            .apiKey(managerClient.getOrCreateApiKey())
             .build())
         .build();
 
