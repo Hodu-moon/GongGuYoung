@@ -30,8 +30,9 @@ public class Member {
     @Column (nullable = false)
     private String password;
 
-    @OneToOne(mappedBy = "member", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private BnplLimit bnplLimit;
+    // 로직 바껴서
+//    @OneToOne(mappedBy = "member", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+//    private BnplLimit bnplLimit;
 
     // 입출금 계좌
     @Column(nullable = true)
