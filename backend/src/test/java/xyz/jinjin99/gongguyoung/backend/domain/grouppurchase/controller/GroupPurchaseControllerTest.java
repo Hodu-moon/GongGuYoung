@@ -55,7 +55,8 @@ class GroupPurchaseControllerTest {
                                 "테스트 공동구매 설명",
                                 1, // 첫 번째 상품 사용
                                 LocalDateTime.now().plusDays(7),
-                                10);
+                                10,
+                                (long) (350000L * 0.9));
 
                 HttpEntity<CreateGroupPurchaseRequest> entity = new HttpEntity<>(request, createHeaders());
 
@@ -90,7 +91,8 @@ class GroupPurchaseControllerTest {
                                 "테스트 공동구매 설명",
                                 999999,
                                 LocalDateTime.now().plusDays(7),
-                                10);
+                                10,
+                                (long) (350000L * 0.9));
 
                 HttpEntity<CreateGroupPurchaseRequest> entity = new HttpEntity<>(request, createHeaders());
 
@@ -127,7 +129,8 @@ class GroupPurchaseControllerTest {
                                 "통합 테스트 설명",
                                 1,
                                 LocalDateTime.now().plusDays(7),
-                                5);
+                                5,
+                                (long) (350000L * 0.9));
 
                 HttpEntity<CreateGroupPurchaseRequest> entity = new HttpEntity<>(request, createHeaders());
 
