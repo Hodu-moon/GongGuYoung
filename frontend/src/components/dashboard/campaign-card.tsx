@@ -17,19 +17,19 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
   const daysLeft = Math.ceil((new Date(campaign.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
 
   return (
-    <Card className="hover:shadow-xl transition-all duration-500 border-purple-100 hover:border-purple-200 hover-lift animate-scale-in group">
+    <Card className="hover:shadow-xl transition-all duration-500 border-gray-200 hover:border-gray-300 hover-lift animate-scale-in group bg-white">
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <Badge
             variant={
               campaign.status === "active" ? "default" : campaign.status === "completed" ? "secondary" : "destructive"
             }
-            className={`${campaign.status === "active" ? "bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse-slow" : ""} transition-all duration-300`}
+            className={`${campaign.status === "active" ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700" : ""} transition-all duration-300`}
           >
             {campaign.status === "active" ? "진행중" : campaign.status === "completed" ? "완료" : "취소"}
           </Badge>
         </div>
-        <CardTitle className="text-lg text-purple-800 group-hover:text-purple-900 transition-colors duration-300">
+        <CardTitle className="text-lg text-gray-800 group-hover:text-gray-900 transition-colors duration-300">
           {campaign.title}
         </CardTitle>
       </CardHeader>
@@ -55,14 +55,14 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           </div>
           <Progress
             value={progressPercentage}
-            className="h-2 bg-purple-100 [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-pink-500 [&>div]:transition-all [&>div]:duration-1000 [&>div]:animate-shimmer"
+            className="h-2 bg-gray-200 [&>div]:bg-gradient-to-r [&>div]:from-purple-600 [&>div]:to-pink-600 [&>div]:transition-all [&>div]:duration-1000"
           />
         </div>
 
         <div className="flex justify-between items-center">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold text-purple-600">{campaign.discountPrice.toLocaleString()}원</span>
+              <span className="text-lg font-bold text-gray-800">{campaign.discountPrice.toLocaleString()}원</span>
               <Badge variant="destructive" className="text-xs">
                 {discountPercentage}% 할인
               </Badge>
@@ -78,7 +78,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
 
         <Link to={`/campaigns/${campaign.id}`}>
           <Button
-            className={`w-full transition-all duration-300 ${campaign.status === "active" ? "bg-hey-gradient text-white hover:opacity-90 hover:shadow-lg" : ""}`}
+            className={`w-full transition-all duration-300 ${campaign.status === "active" ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white hover:shadow-lg" : ""}`}
             disabled={campaign.status !== "active"}
           >
             {campaign.status === "active" ? "참여하기" : campaign.status === "completed" ? "완료됨" : "취소됨"}
