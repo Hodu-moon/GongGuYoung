@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (!response.ok) {
-        throw new Error('로그인에 실패했습니다.')
+        throw new Error('아이디 또는 비밀번호가 틀립니다.')
       }
 
       // 쿠키에서 사용자 정보 읽기
@@ -156,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (error) {
-      throw new Error("로그인에 실패했습니다.")
+      throw new Error("아이디 또는 비밀번호가 틀립니다.")
     }
   }
 
