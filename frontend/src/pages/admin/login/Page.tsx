@@ -24,7 +24,7 @@ export default function AdminLoginPage() {
     try {
       await login(email, password)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "로그인에 실패했습니다.")
+      setError(err instanceof Error ? err.message : "아이디 또는 비밀번호가 틀립니다.")
     }
   }
 
