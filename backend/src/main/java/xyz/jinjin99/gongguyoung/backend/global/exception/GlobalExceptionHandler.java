@@ -1,6 +1,5 @@
 package xyz.jinjin99.gongguyoung.backend.global.exception;
 
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -15,32 +14,38 @@ import org.springframework.web.client.HttpClientErrorException;
 public class GlobalExceptionHandler {
     @Getter
     @AllArgsConstructor
-    static class ErrorResponse{
+    static class ErrorResponse {
         private int responseCode;
         private String responseMessage;
     }
 
     // 이미 존재하는 ID
     @ExceptionHandler(HttpClientErrorException.BadRequest.class)
-    public ResponseEntity<ErrorResponse> handleHttpClientErrorException(HttpClientErrorException exception){
+    public ResponseEntity<ErrorResponse> handleHttpClientErrorException(HttpClientErrorException exception) {
 
-        ErrorResponse errorResponse = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "이미 존재하는 ID 입니다" );
+        ErrorResponse errorResponse = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "이미 존재하는 ID 입니다");
         return ResponseEntity.badRequest()
                 .body(errorResponse);
     }
 
-
     @ExceptionHandler(MemberAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> handleAlreadyExistsException(MemberAlreadyExistsException exception){
+    public ResponseEntity<ErrorResponse> handleAlreadyExistsException(MemberAlreadyExistsException exception) {
 
-        ErrorResponse errorResponse = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "이미 존재하는 ID 입니다" );
+        ErrorResponse errorResponse = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "이미 존재하는 ID 입니다");
         return ResponseEntity.badRequest()
                 .body(errorResponse);
     }
 
     @ExceptionHandler(ProductNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleProductNotFoundException(ProductNotFoundException exception){
+    public ResponseEntity<ErrorResponse> handleProductNotFoundException(ProductNotFoundException exception) {
         ErrorResponse errorResponse = new ErrorResponse(HttpStatus.NOT_FOUND.value(), "존재하지 않는 상품입니다");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(errorResponse);
+    }
+
+    @ExceptionHandler(GroupPurchaseNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProductGroupPurchaseNotFoundException(GroupPurchaseNotFoundException exception) {
+        ErrorResponse errorResponse = new ErrorResponse(HttpStatus.NOT_FOUND.value(), "존재하지 않는 공동구매입니다");
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(errorResponse);
     }

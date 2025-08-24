@@ -19,6 +19,7 @@ public class GroupPurchaseResponse {
     private final String context;
     private final Integer targetCount;
     private final Integer currentCount;
+    private final Long viewCount;
     private final GroupPurchaseStatus status;
     private final LocalDateTime endAt;
     private final LocalDateTime createdAt;
@@ -36,6 +37,7 @@ public class GroupPurchaseResponse {
                 .context(groupPurchase.getContext())
                 .targetCount(groupPurchase.getTargetCount())
                 .currentCount(groupPurchase.getCurrentCount())
+                .viewCount(groupPurchase.getViewCount())
                 .status(groupPurchase.getStatus())
                 .endAt(groupPurchase.getEndAt())
                 .createdAt(groupPurchase.getCreatedAt())

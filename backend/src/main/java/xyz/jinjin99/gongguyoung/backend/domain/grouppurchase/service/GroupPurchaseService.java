@@ -10,4 +10,8 @@ public interface GroupPurchaseService {
     GroupPurchaseResponse createGroupPurchaseAndRegisterScheduling(CreateGroupPurchaseRequest request);
     
     List<GroupPurchaseResponse> getAllGroupPurchases();
+    
+    GroupPurchaseResponse getGroupPurchaseById(Long id);
+    
+    GroupPurchaseResponse getGroupPurchaseByIdWithViewCount(Long id);
 }

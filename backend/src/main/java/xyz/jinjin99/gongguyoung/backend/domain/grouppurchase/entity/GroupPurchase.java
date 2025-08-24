@@ -42,6 +42,9 @@ public class GroupPurchase {
     @Column(nullable = false)
     private Integer currentCount;
 
+    @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long viewCount;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private GroupPurchaseStatus status;
@@ -66,6 +69,7 @@ public class GroupPurchase {
         this.title = title;
         this.endAt = endAt;
         this.currentCount = 0;
+        this.viewCount = 0L;
         this.discountedPrice = discountedPrice;
         this.status = GroupPurchaseStatus.WAITING;
     }
@@ -88,5 +92,9 @@ public class GroupPurchase {
 
     public void cancel() {
         this.status = GroupPurchaseStatus.CANCELLED;
+    }
+
+    public void increaseViewCount() {
+        this.viewCount++;
     }
 }
