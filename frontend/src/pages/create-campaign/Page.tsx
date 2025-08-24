@@ -167,8 +167,8 @@ export default function CreateCampaignPage() {
           </div>
 
           {/* Main Content Card */}
-          <Card className="max-w-4xl mx-auto shadow-xl border-0 bg-white rounded-2xl overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-8">
+          <div className="max-w-4xl mx-auto shadow-xl border-0 rounded-2xl overflow-hidden bg-gradient-to-b from-purple-600 via-purple-600 to-white" style={{backgroundImage: 'linear-gradient(to bottom, rgb(147, 51, 234) 0%, rgb(236, 72, 153) 120px, rgb(255, 255, 255) 120px, rgb(255, 255, 255) 100%)'}}>
+            <CardHeader className="bg-transparent text-white p-8">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-white/20 rounded-full">
                   {React.createElement(steps[currentStep - 1].icon, { className: "w-6 h-6" })}
@@ -182,14 +182,10 @@ export default function CreateCampaignPage() {
               </div>
             </CardHeader>
             
-            <CardContent className="p-8 bg-white">
+            <CardContent className="px-8 pt-5 pb-8 bg-transparent">
               {/* Step 1: 상품 선택 */}
               {currentStep === 1 && (
                 <div className="space-y-6">
-                  <div className="text-center mb-8">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">공동구매할 상품을 선택하세요</h3>
-                    <p className="text-gray-600">미리 등록된 상품 목록에서 선택할 수 있습니다.</p>
-                  </div>
                   
                   <div className="grid md:grid-cols-3 gap-4">
                     {mockProducts.map((product) => (
@@ -446,7 +442,7 @@ export default function CreateCampaignPage() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </div>
         </div>
       </div>
     </AuthGuard>
