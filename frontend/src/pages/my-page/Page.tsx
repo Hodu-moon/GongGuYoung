@@ -69,8 +69,21 @@ export default function MyPage() {
         console.log('Participated purchases:', participated)
         console.log('Created purchases:', created)
         
-        setUserParticipatedPurchases(participated)
-        setUserCreatedPurchases(created)
+        // undefined 데이터 필터링 및 필수 필드 검증
+        const validParticipated = participated.filter(p => 
+          p && 
+          p.groupPurchase && 
+          p.groupPurchase.id && 
+          (p.groupPurchase.title || p.groupPurchase.productName)
+        )
+        const validCreated = created.filter(c => 
+          c && 
+          c.id && 
+          (c.productName || c.title)
+        )
+        
+        setUserParticipatedPurchases(validParticipated)
+        setUserCreatedPurchases(validCreated)
       } catch (error) {
         console.error('Failed to load user purchases:', error)
       } finally {
@@ -234,17 +247,17 @@ export default function MyPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4 text-center">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg">
-                      <div className="text-lg font-bold text-blue-600">
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-3 rounded-lg">
+                      <div className="text-lg font-bold text-purple-600">
                         {isLoadingPurchases ? '-' : userCreatedPurchases.length}
                       </div>
-                      <div className="text-xs text-blue-700">개설한 공구</div>
+                      <div className="text-xs text-purple-700">개설한 공구</div>
                     </div>
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg">
-                      <div className="text-lg font-bold text-green-600">
+                    <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-3 rounded-lg">
+                      <div className="text-lg font-bold text-pink-600">
                         {isLoadingPurchases ? '-' : userParticipatedPurchases.length}
                       </div>
-                      <div className="text-xs text-green-700">참여한 공구</div>
+                      <div className="text-xs text-pink-700">참여한 공구</div>
                     </div>
                   </div>
                   <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg text-center">
@@ -268,17 +281,17 @@ export default function MyPage() {
                     </div>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">총 한도</span>
+                        <span className="text-purple-600">총 한도</span>
                         <span className="font-semibold">{bnplCreditInfo.totalLimit.toLocaleString()}원</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">사용 중</span>
+                        <span className="text-purple-600">사용 중</span>
                         <span className="font-semibold text-red-600">
                           {bnplCreditInfo.usedAmount.toLocaleString()}원
                         </span>
                       </div>
                       <div className="flex justify-between border-t pt-2">
-                        <span className="text-gray-600">사용 가능</span>
+                        <span className="text-purple-600">사용 가능</span>
                         <span className="font-bold text-green-600">
                           {bnplCreditInfo.availableAmount.toLocaleString()}원
                         </span>
@@ -292,7 +305,7 @@ export default function MyPage() {
             {/* Main Content */}
             <div className="lg:col-span-3">
               <Tabs defaultValue="profile" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4 bg-white/95 backdrop-blur-sm">
+                <TabsList className="grid w-full grid-cols-4 bg-gradient-to-r from-purple-50 to-pink-50 backdrop-blur-sm border border-purple-200">
                   <TabsTrigger value="profile" className="flex items-center gap-2">
                     <User className="w-4 h-4" />
                     프로필
@@ -315,8 +328,8 @@ export default function MyPage() {
                 <TabsContent value="profile">
                   <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <User className="w-5 h-5" />
+                      <CardTitle className="flex items-center gap-2 text-purple-800">
+                        <User className="w-5 h-5 text-purple-700" />
                         개인 정보
                       </CardTitle>
                       {!isEditing ? (
@@ -339,8 +352,8 @@ export default function MyPage() {
                     <CardContent className="space-y-6">
                       <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label htmlFor="name" className="flex items-center gap-2">
-                            <User className="w-4 h-4" />
+                          <Label htmlFor="name" className="flex items-center gap-2 text-purple-700">
+                            <User className="w-4 h-4 text-purple-600" />
                             이름
                           </Label>
                           <Input
@@ -348,11 +361,12 @@ export default function MyPage() {
                             value={profileData.name}
                             onChange={(e) => handleInputChange("name", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="email" className="flex items-center gap-2">
-                            <Mail className="w-4 h-4" />
+                          <Label htmlFor="email" className="flex items-center gap-2 text-purple-700">
+                            <Mail className="w-4 h-4 text-purple-600" />
                             이메일
                           </Label>
                           <Input
@@ -361,11 +375,12 @@ export default function MyPage() {
                             value={profileData.email}
                             onChange={(e) => handleInputChange("email", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="phone" className="flex items-center gap-2">
-                            <Phone className="w-4 h-4" />
+                          <Label htmlFor="phone" className="flex items-center gap-2 text-purple-700">
+                            <Phone className="w-4 h-4 text-purple-600" />
                             전화번호
                           </Label>
                           <Input
@@ -373,11 +388,12 @@ export default function MyPage() {
                             value={profileData.phone}
                             onChange={(e) => handleInputChange("phone", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="studentId" className="flex items-center gap-2">
-                            <School className="w-4 h-4" />
+                          <Label htmlFor="studentId" className="flex items-center gap-2 text-purple-700">
+                            <School className="w-4 h-4 text-purple-600" />
                             학번
                           </Label>
                           <Input
@@ -385,11 +401,12 @@ export default function MyPage() {
                             value={profileData.studentId}
                             onChange={(e) => handleInputChange("studentId", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="university" className="flex items-center gap-2">
-                            <School className="w-4 h-4" />
+                          <Label htmlFor="university" className="flex items-center gap-2 text-purple-700">
+                            <School className="w-4 h-4 text-purple-600" />
                             대학교
                           </Label>
                           <Input
@@ -397,11 +414,12 @@ export default function MyPage() {
                             value={profileData.university}
                             onChange={(e) => handleInputChange("university", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="department" className="flex items-center gap-2">
-                            <School className="w-4 h-4" />
+                          <Label htmlFor="department" className="flex items-center gap-2 text-purple-700">
+                            <School className="w-4 h-4 text-purple-600" />
                             학과
                           </Label>
                           <Input
@@ -409,12 +427,13 @@ export default function MyPage() {
                             value={profileData.department}
                             onChange={(e) => handleInputChange("department", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="address" className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
+                        <Label htmlFor="address" className="flex items-center gap-2 text-purple-700">
+                          <MapPin className="w-4 h-4 text-purple-600" />
                           주소
                         </Label>
                         <Input
@@ -422,11 +441,12 @@ export default function MyPage() {
                           value={profileData.address}
                           onChange={(e) => handleInputChange("address", e.target.value)}
                           disabled={!isEditing}
+                          className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="bio" className="flex items-center gap-2">
-                          <User className="w-4 h-4" />
+                        <Label htmlFor="bio" className="flex items-center gap-2 text-purple-700">
+                          <User className="w-4 h-4 text-purple-600" />
                           자기소개
                         </Label>
                         <Textarea
@@ -434,6 +454,7 @@ export default function MyPage() {
                           value={profileData.bio}
                           onChange={(e) => handleInputChange("bio", e.target.value)}
                           disabled={!isEditing}
+                          className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           rows={3}
                         />
                       </div>
@@ -459,24 +480,24 @@ export default function MyPage() {
                         </div>
                       ) : userCreatedPurchases.length > 0 ? (
                         <div className="space-y-4">
-                          {userCreatedPurchases.map((purchase) => (
+                          {userCreatedPurchases.filter(purchase => purchase).map((purchase, index) => (
                             <div
-                              key={purchase.id}
+                              key={purchase?.id || `created-${index}`}
                               className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg hover:shadow-md transition-all duration-200"
                             >
                               <div className="flex items-center gap-4">
                                 <img
-                                  src={purchase.productImageUrl || "/placeholder.svg"}
-                                  alt={purchase.productName}
+                                  src={purchase?.productImageUrl || "/placeholder.svg"}
+                                  alt={purchase?.productName || "상품 이미지"}
                                   className="w-16 h-16 object-cover rounded-lg"
                                 />
                                 <div>
-                                  <h3 className="font-semibold text-purple-800">{purchase.title}</h3>
-                                  <p className="text-sm text-purple-600">{purchase.productName}</p>
+                                  <h3 className="font-semibold text-purple-800">{purchase?.title || "제목 없음"}</h3>
+                                  <p className="text-sm text-purple-600">{purchase?.productName || "상품명 없음"}</p>
                                   <div className="flex items-center gap-2 mt-1">
-                                    {getStatusBadge(purchase.status.toLowerCase())}
+                                    {getStatusBadge(purchase?.status?.toLowerCase() || "active")}
                                     <span className="text-sm text-purple-600">
-                                      {purchase.currentCount}/{purchase.targetCount}명 참여
+                                      {purchase?.currentCount || 0}/{purchase?.targetCount || 0}명 참여
                                     </span>
                                   </div>
                                 </div>
@@ -496,7 +517,7 @@ export default function MyPage() {
                         </div>
                       ) : (
                         <div className="text-center py-8 text-purple-600">
-                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-purple-400" />
                           <p>아직 개설한 공구가 없습니다.</p>
                           <Link to="/create-campaign">
                             <Button className="mt-4 bg-hey-gradient">첫 공구 만들기</Button>
@@ -522,27 +543,27 @@ export default function MyPage() {
                         </div>
                       ) : userParticipatedPurchases.length > 0 ? (
                         <div className="space-y-4">
-                          {userParticipatedPurchases.map((participant) => (
+                          {userParticipatedPurchases.filter(participant => participant && participant.groupPurchase).map((participant, index) => (
                             <div
-                              key={participant.id}
+                              key={participant?.id || `participant-${index}`}
                               className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg hover:shadow-md transition-all duration-200"
                             >
                               <div className="flex items-center gap-4">
                                 <img
-                                  src={participant.groupPurchase.productImageUrl || "/placeholder.svg"}
-                                  alt={participant.groupPurchase.productName}
+                                  src={participant?.groupPurchase?.productImageUrl || "/placeholder.svg"}
+                                  alt={participant?.groupPurchase?.productName || "상품 이미지"}
                                   className="w-16 h-16 object-cover rounded-lg"
                                 />
                                 <div>
-                                  <h3 className="font-semibold text-purple-800">{participant.groupPurchase.title}</h3>
-                                  <p className="text-sm text-purple-600">{participant.groupPurchase.productName}</p>
+                                  <h3 className="font-semibold text-purple-800">{participant?.groupPurchase?.title || "제목 없음"}</h3>
+                                  <p className="text-sm text-purple-600">{participant?.groupPurchase?.productName || "상품명 없음"}</p>
                                   <div className="flex items-center gap-2 mt-1">
-                                    {getStatusBadge(participant.groupPurchase.status.toLowerCase())}
+                                    {getStatusBadge(participant?.groupPurchase?.status?.toLowerCase() || "active")}
                                     <span className="text-sm text-purple-600">
                                       {participant.isPaid ? '결제완료' : '미결제'}
                                     </span>
                                     <span className="text-sm text-purple-600">
-                                      {participant.groupPurchase.currentCount}/{participant.groupPurchase.targetCount}명 참여
+                                      {participant?.groupPurchase?.currentCount || 0}/{participant?.groupPurchase?.targetCount || 0}명 참여
                                     </span>
                                   </div>
                                 </div>
@@ -557,7 +578,7 @@ export default function MyPage() {
                                       결제하기
                                     </Button>
                                   )}
-                                  <Link to={`/campaigns/${participant.groupPurchase.id}`}>
+                                  <Link to={`/campaigns/${participant?.groupPurchase?.id || '#'}`}>
                                     <Button variant="outline" size="sm" className="bg-transparent">
                                       상세보기
                                     </Button>
@@ -569,7 +590,7 @@ export default function MyPage() {
                         </div>
                       ) : (
                         <div className="text-center py-8 text-purple-600">
-                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-purple-400" />
                           <p>아직 참여한 공구가 없습니다.</p>
                           <Link to="/dashboard">
                             <Button className="mt-4 bg-hey-gradient">공구 둘러보기</Button>
@@ -685,19 +706,19 @@ export default function MyPage() {
                               </div>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                 <div>
-                                  <span className="text-gray-500">총 금액</span>
+                                  <span className="text-purple-500">총 금액</span>
                                   <div className="font-semibold">{bnpl.totalAmount.toLocaleString()}원</div>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">월 납부액</span>
+                                  <span className="text-purple-500">월 납부액</span>
                                   <div className="font-semibold">{bnpl.monthlyPayment.toLocaleString()}원</div>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">남은 횟수</span>
+                                  <span className="text-purple-500">남은 횟수</span>
                                   <div className="font-semibold">{bnpl.remainingPayments}회</div>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">다음 결제일</span>
+                                  <span className="text-purple-500">다음 결제일</span>
                                   <div className="font-semibold">{bnpl.nextPaymentDate}</div>
                                 </div>
                               </div>
@@ -706,7 +727,7 @@ export default function MyPage() {
                         </div>
                       ) : (
                         <div className="text-center py-8 text-purple-600">
-                          <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                          <CreditCard className="w-12 h-12 mx-auto mb-4 text-purple-400" />
                           <p>진행 중인 BNPL 결제가 없습니다.</p>
                         </div>
                       )}
