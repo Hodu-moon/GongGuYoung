@@ -10,8 +10,10 @@ import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.service.GroupPurcha
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -32,6 +34,16 @@ public class GroupPurchaseController {
   public ResponseEntity<List<GroupPurchaseResponse>> getAllGroupPurchases() {
     List<GroupPurchaseResponse> groupPurchases = groupPurchaseService.getAllGroupPurchases();
     return ResponseEntity.ok(groupPurchases);
+  }
+
+  @GetMapping("/{id}")
+  public ResponseEntity<GroupPurchaseResponse> getGroupPurchase(
+      @PathVariable Long id,
+      @RequestParam(defaultValue = "false") boolean increaseViewCount) {
+    GroupPurchaseResponse groupPurchase = increaseViewCount 
+        ? groupPurchaseService.getGroupPurchaseByIdWithViewCount(id)
+        : groupPurchaseService.getGroupPurchaseById(id);
+    return ResponseEntity.ok(groupPurchase);
   }
 
 }
