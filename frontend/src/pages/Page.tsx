@@ -72,9 +72,9 @@ export default function HomePage() {
                   <div className="text-left">
                     {user ? (
                       <>
-                        <p className="text-sm text-gray-600">한국대학교 MSA학과</p>
-                        <p className="font-bold text-lg">{user.fullName}</p>
-                        <p className="text-xs text-gray-500">202412345</p>
+                        <p className="text-sm text-purple-600">한국대학교 MSA학과</p>
+                        <p className="font-bold text-lg text-purple-800">{user.fullName}</p>
+                        <p className="text-xs text-purple-600">202412345</p>
                       </>
                     ) : (
                       <p className="font-bold text-lg">로그인이 필요합니다</p>
