@@ -1,8 +1,7 @@
-"use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
+import { api } from "@/api/api"
 
 interface User {
   id: string
@@ -38,30 +37,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check for existing session
     const checkAuth = async () => {
       try {
-        // 먼저 쿠키에서 사용자 정보 확인
+        // 1) 쿠키(member) 우선 확인
         const memberCookie = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('member='))
-          ?.split('=')[1]
+          .split("; ")
+          .find((row) => row.startsWith("member="))
+          ?.split("=")[1]
 
         if (memberCookie) {
           try {
-            // Base64 URL 디코딩
-            const base64String = memberCookie.replace(/-/g, '+').replace(/_/g, '/')
-            const paddedBase64 = base64String + '='.repeat((4 - base64String.length % 4) % 4)
-            
-            // UTF-8 안전 디코딩
+            const base64String = memberCookie.replace(/-/g, "+").replace(/_/g, "/")
+            const paddedBase64 = base64String + "=".repeat((4 - (base64String.length % 4)) % 4)
+
             const binaryString = atob(paddedBase64)
             const bytes = new Uint8Array(binaryString.length)
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i)
-            }
-            const utf8String = new TextDecoder('utf-8').decode(bytes)
+            for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i)
+            const utf8String = new TextDecoder("utf-8").decode(bytes)
             const decoded = JSON.parse(utf8String)
-            
+
             const restoredUser: User = {
               id: decoded.id.toString(),
               email: decoded.email,
@@ -74,15 +68,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(restoredUser)
             localStorage.setItem("auth_token", decoded.userKey || "")
             localStorage.setItem("user_data", JSON.stringify(restoredUser))
-          } catch (decodeError) {
-            console.error("쿠키 디코딩 실패:", decodeError)
-            // 쿠키가 손상된 경우 정리
-            document.cookie = 'member=; Max-Age=0; path=/'
+          } catch (e) {
+            console.error("쿠키 디코딩 실패:", e)
+            document.cookie = "member=; Max-Age=0; path=/"
             localStorage.removeItem("auth_token")
             localStorage.removeItem("user_data")
           }
         } else {
-          // 쿠키가 없으면 localStorage에서 확인 (fallback)
+          // 2) 로컬스토리지 fallback
           const token = localStorage.getItem("auth_token")
           const userData = localStorage.getItem("user_data")
           if (token && userData) {
@@ -101,86 +94,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch('/api/v1/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-        credentials: 'include', // 쿠키 포함
-      })
+      // axios 사용
+      await api.post("/api/v1/login", { email, password })
+      console.log("성공한건가?");
+      // 로그인 성공 후 쿠키에서 사용자 정보 읽기
+      const memberCookie = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("member="))
+        ?.split("=")[1]
 
-      if (!response.ok) {
-        throw new Error('아이디 또는 비밀번호가 틀립니다.')
+      if (!memberCookie) {
+        throw new Error("로그인 정보가 없습니다.")
       }
 
-      // 쿠키에서 사용자 정보 읽기
-      const memberCookie = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('member='))
-        ?.split('=')[1]
+      try {
+        const base64String = memberCookie.replace(/-/g, "+").replace(/_/g, "/")
+        const paddedBase64 = base64String + "=".repeat((4 - (base64String.length % 4)) % 4)
 
-      if (memberCookie) {
-        try {
-          // Base64 URL 디코딩을 위한 안전한 방법
-          const base64String = memberCookie.replace(/-/g, '+').replace(/_/g, '/')
-          const paddedBase64 = base64String + '='.repeat((4 - base64String.length % 4) % 4)
-          
-          // UTF-8 안전 디코딩
-          const binaryString = atob(paddedBase64)
-          const bytes = new Uint8Array(binaryString.length)
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i)
-          }
-          const utf8String = new TextDecoder('utf-8').decode(bytes)
-          const decoded = JSON.parse(utf8String)
-          
-          const loggedInUser: User = {
-            id: decoded.id.toString(),
-            email: decoded.email,
-            fullName: decoded.name,
-            studentId: undefined,
-            university: undefined,
-            isVerified: true,
-          }
+        const binaryString = atob(paddedBase64)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i)
+        const utf8String = new TextDecoder("utf-8").decode(bytes)
+        const decoded = JSON.parse(utf8String)
 
-          setUser(loggedInUser)
-          localStorage.setItem("auth_token", decoded.userKey || "")
-          localStorage.setItem("user_data", JSON.stringify(loggedInUser))
-        } catch (decodeError) {
-          console.error("쿠키 디코딩 실패:", decodeError)
-          throw new Error("로그인 정보 처리에 실패했습니다.")
+        const loggedInUser: User = {
+          id: decoded.id.toString(),
+          email: decoded.email,
+          fullName: decoded.name,
+          studentId: undefined,
+          university: undefined,
+          isVerified: true,
         }
+
+        setUser(loggedInUser)
+        localStorage.setItem("auth_token", decoded.userKey || "")
+        localStorage.setItem("user_data", JSON.stringify(loggedInUser))
+      } catch (decodeError) {
+        console.error("쿠키 디코딩 실패:", decodeError)
+        throw new Error("로그인 정보 처리에 실패했습니다.")
       }
     } catch (error) {
+      // 필요 시 서버 메시지 파싱
+      // const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined
       throw new Error("아이디 또는 비밀번호가 틀립니다.")
     }
   }
 
   const register = async (userData: RegisterData) => {
     try {
-      const response = await fetch('/api/v1/members', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: userData.email,
-          password: userData.password,
-          name: userData.name,
-        }),
+      await api.post("/api/v1/members", {
+        email: userData.email,
+        password: userData.password,
+        name: userData.name,
       })
-
-      if (!response.ok) {
-        throw new Error('회원가입에 실패했습니다.')
-      }
-
-      const signupResponse = await response.json()
-      
-      // 회원가입 성공해도 자동 로그인하지 않음
+      // 회원가입 성공해도 자동 로그인 X (기존 동작 유지)
     } catch (error) {
       throw new Error("회원가입에 실패했습니다.")
     }
@@ -188,21 +155,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/v1/logout', {
-        method: 'POST',
-        credentials: 'include', // 쿠키 포함
-      })
+      await api.post("/api/v1/logout")
     } catch (error) {
       console.error("로그아웃 요청 실패:", error)
     } finally {
-      // API 호출 성공 여부와 관계없이 로컬 상태는 정리
       setUser(null)
       localStorage.removeItem("auth_token")
       localStorage.removeItem("user_data")
     }
   }
 
-  return <AuthContext.Provider value={{ user, login, register, logout, loading }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
