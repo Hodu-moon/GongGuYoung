@@ -1,49 +1,73 @@
 package xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.controller;
 
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import lombok.RequiredArgsConstructor;
-import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.dto.request.CreateGroupPurchaseRequest;
-import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.dto.response.GroupPurchaseResponse;
-import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.service.GroupPurchaseService;
-
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.dto.request.CreateGroupPurchaseRequest;
+import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.dto.response.GroupPurchaseResponse;
 
 import java.util.List;
 
-@RestController
-@RequestMapping("/api/v1/group-purchase")
-@RequiredArgsConstructor
-public class GroupPurchaseController {
+@Tag(name = "공동구매", description = "공동구매 관련 API")
+public interface GroupPurchaseController {
 
-  private final GroupPurchaseService groupPurchaseService;
+    @Operation(
+        summary = "공동구매 생성",
+        description = "새로운 공동구매를 생성하고 만료 스케줄링을 등록합니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "공동구매 생성 성공",
+            content = @Content(schema = @Schema(implementation = GroupPurchaseResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "상품을 찾을 수 없음"
+        )
+    })
+    ResponseEntity<GroupPurchaseResponse> createGroupPurchase(
+        @RequestBody CreateGroupPurchaseRequest request
+    );
 
-  @PostMapping
-  public ResponseEntity<GroupPurchaseResponse> createGroupPurchase(@RequestBody CreateGroupPurchaseRequest request) {
-    GroupPurchaseResponse groupPurchase = groupPurchaseService.createGroupPurchaseAndRegisterScheduling(request);
-    return ResponseEntity.ok(groupPurchase);
-  }
+    @Operation(
+        summary = "전체 공동구매 목록 조회",
+        description = "등록된 모든 공동구매 목록을 조회합니다."
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "공동구매 목록 조회 성공",
+        content = @Content(schema = @Schema(implementation = GroupPurchaseResponse.class))
+    )
+    ResponseEntity<List<GroupPurchaseResponse>> getAllGroupPurchases();
 
-  @GetMapping
-  public ResponseEntity<List<GroupPurchaseResponse>> getAllGroupPurchases() {
-    List<GroupPurchaseResponse> groupPurchases = groupPurchaseService.getAllGroupPurchases();
-    return ResponseEntity.ok(groupPurchases);
-  }
-
-  @GetMapping("/{id}")
-  public ResponseEntity<GroupPurchaseResponse> getGroupPurchase(
-      @PathVariable Long id,
-      @RequestParam(defaultValue = "false") boolean increaseViewCount) {
-    GroupPurchaseResponse groupPurchase = increaseViewCount 
-        ? groupPurchaseService.getGroupPurchaseByIdWithViewCount(id)
-        : groupPurchaseService.getGroupPurchaseById(id);
-    return ResponseEntity.ok(groupPurchase);
-  }
-
+    @Operation(
+        summary = "공동구매 상세 조회",
+        description = "공동구매 ID로 특정 공동구매의 상세 정보를 조회합니다. 조회수 증가 여부를 선택할 수 있습니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "공동구매 조회 성공",
+            content = @Content(schema = @Schema(implementation = GroupPurchaseResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "공동구매를 찾을 수 없음"
+        )
+    })
+    ResponseEntity<GroupPurchaseResponse> getGroupPurchase(
+        @Parameter(description = "공동구매 ID", required = true)
+        @PathVariable Long id,
+        @Parameter(description = "조회수 증가 여부 (기본값: false)")
+        @RequestParam(defaultValue = "false") boolean increaseViewCount
+    );
 }
