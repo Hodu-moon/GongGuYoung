@@ -1,6 +1,6 @@
 
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { mockCampaigns } from "@/lib/mock-data"
+import { GroupPurchaseApi, type GroupPurchaseData, type ParticipantData } from "@/lib/group-purchase-api"
 import {
   User,
   ShoppingBag,
@@ -27,27 +28,79 @@ import {
   Calendar,
   TrendingUp,
   Clock,
+  Bell,
+  QrCode,
+  Plus,
+  LogOut,
 } from "lucide-react"
 import { Link } from 'react-router-dom'
+import Image from '@/compat/NextImage'
 
 export default function MyPage() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [userParticipatedPurchases, setUserParticipatedPurchases] = useState<ParticipantData[]>([])
+  const [userCreatedPurchases, setUserCreatedPurchases] = useState<GroupPurchaseData[]>([])
+  const [isLoadingPurchases, setIsLoadingPurchases] = useState(true)
   const [profileData, setProfileData] = useState({
-    name: user?.name || "헤이영",
+    name: user?.fullName || "",
     email: user?.email || "heyoung@university.ac.kr",
     phone: "010-1234-5678",
-    university: "공학대학교",
-    department: "컴퓨터공학과",
+    university: "한국대학교",
+    department: "MSA학과",
     studentId: "202412345",
     bio: "안녕하세요! 공동구매를 통해 합리적인 소비를 추구하는 대학생입니다.",
     address: "서울시 강남구 테헤란로 123",
   })
 
-  // Mock data for user's campaigns and orders
-  const myCampaigns = mockCampaigns.filter((campaign) => campaign.createdBy === user?.name)
-  const joinedCampaigns = mockCampaigns.filter((campaign) => campaign.createdBy !== user?.name).slice(0, 3)
+  // Load user's group purchases
+  useEffect(() => {
+    const loadUserPurchases = async () => {
+      if (!user?.id) return
+      
+      setIsLoadingPurchases(true)
+      try {
+        const [participated, created] = await Promise.all([
+          GroupPurchaseApi.getUserParticipatedGroupPurchases(user.id.toString()),
+          GroupPurchaseApi.getUserCreatedGroupPurchases(user.id.toString())
+        ])
+        
+        console.log('Participated purchases:', participated)
+        console.log('Created purchases:', created)
+        
+        // undefined 데이터 필터링 및 필수 필드 검증
+        const validParticipated = participated.filter(p => 
+          p && 
+          p.groupPurchase && 
+          p.groupPurchase.id && 
+          (p.groupPurchase.title || p.groupPurchase.productName)
+        )
+        const validCreated = created.filter(c => 
+          c && 
+          c.id && 
+          (c.productName || c.title)
+        )
+        
+        setUserParticipatedPurchases(validParticipated)
+        setUserCreatedPurchases(validCreated)
+      } catch (error) {
+        console.error('Failed to load user purchases:', error)
+      } finally {
+        setIsLoadingPurchases(false)
+      }
+    }
+
+    loadUserPurchases()
+  }, [user?.id])
+
+  // Fallback to mock data for campaigns display
+  const myCampaigns = user?.fullName 
+    ? mockCampaigns.filter((campaign) => campaign.createdBy === user.fullName)
+    : []
+  const joinedCampaigns = user?.fullName 
+    ? mockCampaigns.filter((campaign) => campaign.createdBy !== user.fullName).slice(0, 3)
+    : []
 
   const mockOrders = [
     {
@@ -119,18 +172,59 @@ export default function MyPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 animate-fade-in">
+      <div className="min-h-screen bg-hey-gradient">
+        {/* Header */}
+        <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex justify-between items-center">
+              <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <Image
+                  src="/hey-young-logo.png"
+                  alt="Hey Young Smart Campus"
+                  width={36}
+                  height={36}
+                  className="rounded-lg"
+                />
+                <div>
+                  <h1 className="text-lg font-bold text-white">Hey Young</h1>
+                  <p className="text-xs text-white/80">Smart Campus</p>
+                </div>
+              </Link>
+              <div className="flex gap-1">
+                <Link to="/notifications">
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2">
+                    <Bell className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link to="/my-page">
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2">
+                    <User className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link to="/create-campaign">
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2" onClick={() => logout()}>
+                  로그아웃
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
         <div className="container mx-auto px-4 py-8">
-          {/* Header */}
+          {/* Page Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">마이 페이지</h1>
-            <p className="text-gray-600 text-lg">내 정보와 공구 활동을 관리하세요</p>
+            <h1 className="text-4xl font-bold mb-2 text-white">마이 페이지</h1>
+            <p className="text-white/90 text-lg">내 정보와 공구 활동을 관리하세요</p>
           </div>
 
           <div className="grid lg:grid-cols-4 gap-8">
             {/* Profile Sidebar */}
             <div className="lg:col-span-1">
-              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm sticky top-8">
+              <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm sticky top-8">
                 <CardHeader className="text-center pb-4">
                   <div className="relative mx-auto mb-4">
                     <Avatar className="w-24 h-24 mx-auto border-4 border-white shadow-lg">
@@ -147,26 +241,39 @@ export default function MyPage() {
                       <Camera className="w-4 h-4" />
                     </Button>
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900">{profileData.name}</h2>
-                  <p className="text-sm text-gray-600">{profileData.university}</p>
-                  <p className="text-sm text-gray-600">{profileData.department}</p>
+                  <h2 className="text-xl font-bold text-purple-800">{profileData.name}</h2>
+                  <p className="text-sm text-purple-600">{profileData.university}</p>
+                  <p className="text-sm text-purple-600">{profileData.department}</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4 text-center">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg">
-                      <div className="text-lg font-bold text-blue-600">{myCampaigns.length}</div>
-                      <div className="text-xs text-blue-700">개설한 공구</div>
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-3 rounded-lg">
+                      <div className="text-lg font-bold text-purple-600">
+                        {isLoadingPurchases ? '-' : userCreatedPurchases.length}
+                      </div>
+                      <div className="text-xs text-purple-700">개설한 공구</div>
                     </div>
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg">
-                      <div className="text-lg font-bold text-green-600">{joinedCampaigns.length}</div>
-                      <div className="text-xs text-green-700">참여한 공구</div>
+                    <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-3 rounded-lg">
+                      <div className="text-lg font-bold text-pink-600">
+                        {isLoadingPurchases ? '-' : userParticipatedPurchases.length}
+                      </div>
+                      <div className="text-xs text-pink-700">참여한 공구</div>
                     </div>
                   </div>
                   <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold ">
-                      {mockOrders.reduce((sum, order) => sum + order.amount, 0).toLocaleString()}원
+                    <div className="text-2xl font-bold text-purple-700">
+                      {isLoadingPurchases 
+                        ? '-' 
+                        : userParticipatedPurchases
+                            .filter(p => p.isPaid && p.groupPurchase?.productPrice)
+                            .reduce((sum, p) => {
+                              const price = p.groupPurchase?.productPrice || 0
+                              return sum + (price * 0.1) // 10% 할인 가정
+                            }, 0)
+                            .toLocaleString()
+                      }원
                     </div>
-                    <div className="text-sm text-gray-600">총 절약 금액</div>
+                    <div className="text-sm text-purple-600">총 절약 금액</div>
                   </div>
                   <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg">
                     <div className="text-center mb-3">
@@ -174,17 +281,17 @@ export default function MyPage() {
                     </div>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">총 한도</span>
+                        <span className="text-purple-600">총 한도</span>
                         <span className="font-semibold">{bnplCreditInfo.totalLimit.toLocaleString()}원</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">사용 중</span>
+                        <span className="text-purple-600">사용 중</span>
                         <span className="font-semibold text-red-600">
                           {bnplCreditInfo.usedAmount.toLocaleString()}원
                         </span>
                       </div>
                       <div className="flex justify-between border-t pt-2">
-                        <span className="text-gray-600">사용 가능</span>
+                        <span className="text-purple-600">사용 가능</span>
                         <span className="font-bold text-green-600">
                           {bnplCreditInfo.availableAmount.toLocaleString()}원
                         </span>
@@ -198,7 +305,7 @@ export default function MyPage() {
             {/* Main Content */}
             <div className="lg:col-span-3">
               <Tabs defaultValue="profile" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4 bg-white/80 backdrop-blur-sm">
+                <TabsList className="grid w-full grid-cols-4 bg-gradient-to-r from-purple-50 to-pink-50 backdrop-blur-sm border border-purple-200">
                   <TabsTrigger value="profile" className="flex items-center gap-2">
                     <User className="w-4 h-4" />
                     프로필
@@ -219,10 +326,10 @@ export default function MyPage() {
 
                 {/* Profile Tab */}
                 <TabsContent value="profile">
-                  <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <User className="w-5 h-5" />
+                      <CardTitle className="flex items-center gap-2 text-purple-800">
+                        <User className="w-5 h-5 text-purple-700" />
                         개인 정보
                       </CardTitle>
                       {!isEditing ? (
@@ -245,8 +352,8 @@ export default function MyPage() {
                     <CardContent className="space-y-6">
                       <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label htmlFor="name" className="flex items-center gap-2">
-                            <User className="w-4 h-4" />
+                          <Label htmlFor="name" className="flex items-center gap-2 text-purple-700">
+                            <User className="w-4 h-4 text-purple-600" />
                             이름
                           </Label>
                           <Input
@@ -254,11 +361,12 @@ export default function MyPage() {
                             value={profileData.name}
                             onChange={(e) => handleInputChange("name", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="email" className="flex items-center gap-2">
-                            <Mail className="w-4 h-4" />
+                          <Label htmlFor="email" className="flex items-center gap-2 text-purple-700">
+                            <Mail className="w-4 h-4 text-purple-600" />
                             이메일
                           </Label>
                           <Input
@@ -267,11 +375,12 @@ export default function MyPage() {
                             value={profileData.email}
                             onChange={(e) => handleInputChange("email", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="phone" className="flex items-center gap-2">
-                            <Phone className="w-4 h-4" />
+                          <Label htmlFor="phone" className="flex items-center gap-2 text-purple-700">
+                            <Phone className="w-4 h-4 text-purple-600" />
                             전화번호
                           </Label>
                           <Input
@@ -279,11 +388,12 @@ export default function MyPage() {
                             value={profileData.phone}
                             onChange={(e) => handleInputChange("phone", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="studentId" className="flex items-center gap-2">
-                            <School className="w-4 h-4" />
+                          <Label htmlFor="studentId" className="flex items-center gap-2 text-purple-700">
+                            <School className="w-4 h-4 text-purple-600" />
                             학번
                           </Label>
                           <Input
@@ -291,11 +401,12 @@ export default function MyPage() {
                             value={profileData.studentId}
                             onChange={(e) => handleInputChange("studentId", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="university" className="flex items-center gap-2">
-                            <School className="w-4 h-4" />
+                          <Label htmlFor="university" className="flex items-center gap-2 text-purple-700">
+                            <School className="w-4 h-4 text-purple-600" />
                             대학교
                           </Label>
                           <Input
@@ -303,11 +414,12 @@ export default function MyPage() {
                             value={profileData.university}
                             onChange={(e) => handleInputChange("university", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="department" className="flex items-center gap-2">
-                            <School className="w-4 h-4" />
+                          <Label htmlFor="department" className="flex items-center gap-2 text-purple-700">
+                            <School className="w-4 h-4 text-purple-600" />
                             학과
                           </Label>
                           <Input
@@ -315,12 +427,13 @@ export default function MyPage() {
                             value={profileData.department}
                             onChange={(e) => handleInputChange("department", e.target.value)}
                             disabled={!isEditing}
+                            className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="address" className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
+                        <Label htmlFor="address" className="flex items-center gap-2 text-purple-700">
+                          <MapPin className="w-4 h-4 text-purple-600" />
                           주소
                         </Label>
                         <Input
@@ -328,11 +441,12 @@ export default function MyPage() {
                           value={profileData.address}
                           onChange={(e) => handleInputChange("address", e.target.value)}
                           disabled={!isEditing}
+                          className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="bio" className="flex items-center gap-2">
-                          <User className="w-4 h-4" />
+                        <Label htmlFor="bio" className="flex items-center gap-2 text-purple-700">
+                          <User className="w-4 h-4 text-purple-600" />
                           자기소개
                         </Label>
                         <Textarea
@@ -340,6 +454,7 @@ export default function MyPage() {
                           value={profileData.bio}
                           onChange={(e) => handleInputChange("bio", e.target.value)}
                           disabled={!isEditing}
+                          className="bg-purple-50 border-purple-200 text-purple-800 focus:border-purple-400 focus:ring-purple-200"
                           rows={3}
                         />
                       </div>
@@ -350,43 +465,48 @@ export default function MyPage() {
                 {/* Campaigns Tab */}
                 <TabsContent value="campaigns" className="space-y-6">
                   {/* My Created Campaigns */}
-                  <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="w-5 h-5" />
-                        내가 개설한 공구 ({myCampaigns.length})
+                        내가 개설한 공구 ({isLoadingPurchases ? '-' : userCreatedPurchases.length})
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {myCampaigns.length > 0 ? (
+                      {isLoadingPurchases ? (
+                        <div className="text-center py-8 text-purple-600">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                          <p>로딩 중...</p>
+                        </div>
+                      ) : userCreatedPurchases.length > 0 ? (
                         <div className="space-y-4">
-                          {myCampaigns.map((campaign) => (
+                          {userCreatedPurchases.filter(purchase => purchase).map((purchase, index) => (
                             <div
-                              key={campaign.id}
+                              key={purchase?.id || `created-${index}`}
                               className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg hover:shadow-md transition-all duration-200"
                             >
                               <div className="flex items-center gap-4">
                                 <img
-                                  src={campaign.product.imageUrl || "/placeholder.svg"}
-                                  alt={campaign.product.name}
+                                  src={purchase?.productImageUrl || "/placeholder.svg"}
+                                  alt={purchase?.productName || "상품 이미지"}
                                   className="w-16 h-16 object-cover rounded-lg"
                                 />
                                 <div>
-                                  <h3 className="font-semibold text-gray-900">{campaign.title}</h3>
-                                  <p className="text-sm text-gray-600">{campaign.product.name}</p>
+                                  <h3 className="font-semibold text-purple-800">{purchase?.title || "제목 없음"}</h3>
+                                  <p className="text-sm text-purple-600">{purchase?.productName || "상품명 없음"}</p>
                                   <div className="flex items-center gap-2 mt-1">
-                                    {getStatusBadge(campaign.status)}
-                                    <span className="text-sm text-gray-500">
-                                      {campaign.currentQuantity}/{campaign.targetQuantity}명 참여
+                                    {getStatusBadge(purchase?.status?.toLowerCase() || "active")}
+                                    <span className="text-sm text-purple-600">
+                                      {purchase?.currentCount || 0}/{purchase?.targetCount || 0}명 참여
                                     </span>
                                   </div>
                                 </div>
                               </div>
                               <div className="text-right">
                                 <div className="text-lg font-bold text-purple-600">
-                                  {campaign.discountPrice.toLocaleString()}원
+                                  {(purchase.productPrice || 0).toLocaleString()}원
                                 </div>
-                                <Link to={`/campaigns/${campaign.id}`}>
+                                <Link to={`/campaigns/${purchase.id}`}>
                                   <Button variant="outline" size="sm" className="mt-2 bg-transparent">
                                     상세보기
                                   </Button>
@@ -396,8 +516,8 @@ export default function MyPage() {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <div className="text-center py-8 text-purple-600">
+                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-purple-400" />
                           <p>아직 개설한 공구가 없습니다.</p>
                           <Link to="/create-campaign">
                             <Button className="mt-4 bg-hey-gradient">첫 공구 만들기</Button>
@@ -407,53 +527,70 @@ export default function MyPage() {
                     </CardContent>
                   </Card>
 
-                  {/* Joined Campaigns */}
-                  <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                  {/* Participated Campaigns */}
+                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <ShoppingBag className="w-5 h-5" />
-                        참여한 공구 ({joinedCampaigns.length})
+                        참여한 공구 ({isLoadingPurchases ? '-' : userParticipatedPurchases.length})
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {joinedCampaigns.length > 0 ? (
+                      {isLoadingPurchases ? (
+                        <div className="text-center py-8 text-purple-600">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                          <p>로딩 중...</p>
+                        </div>
+                      ) : userParticipatedPurchases.length > 0 ? (
                         <div className="space-y-4">
-                          {joinedCampaigns.map((campaign) => (
+                          {userParticipatedPurchases.filter(participant => participant && participant.groupPurchase).map((participant, index) => (
                             <div
-                              key={campaign.id}
+                              key={participant?.id || `participant-${index}`}
                               className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg hover:shadow-md transition-all duration-200"
                             >
                               <div className="flex items-center gap-4">
                                 <img
-                                  src={campaign.product.imageUrl || "/placeholder.svg"}
-                                  alt={campaign.product.name}
+                                  src={participant?.groupPurchase?.productImageUrl || "/placeholder.svg"}
+                                  alt={participant?.groupPurchase?.productName || "상품 이미지"}
                                   className="w-16 h-16 object-cover rounded-lg"
                                 />
                                 <div>
-                                  <h3 className="font-semibold text-gray-900">{campaign.title}</h3>
-                                  <p className="text-sm text-gray-600">{campaign.product.name}</p>
+                                  <h3 className="font-semibold text-purple-800">{participant?.groupPurchase?.title || "제목 없음"}</h3>
+                                  <p className="text-sm text-purple-600">{participant?.groupPurchase?.productName || "상품명 없음"}</p>
                                   <div className="flex items-center gap-2 mt-1">
-                                    {getStatusBadge(campaign.status)}
-                                    <span className="text-sm text-gray-500">개설자: {campaign.createdBy}</span>
+                                    {getStatusBadge(participant?.groupPurchase?.status?.toLowerCase() || "active")}
+                                    <span className="text-sm text-purple-600">
+                                      {participant.isPaid ? '결제완료' : '미결제'}
+                                    </span>
+                                    <span className="text-sm text-purple-600">
+                                      {participant?.groupPurchase?.currentCount || 0}/{participant?.groupPurchase?.targetCount || 0}명 참여
+                                    </span>
                                   </div>
                                 </div>
                               </div>
                               <div className="text-right">
                                 <div className="text-lg font-bold text-green-600">
-                                  {campaign.discountPrice.toLocaleString()}원
+                                  {(participant.groupPurchase?.productPrice || 0).toLocaleString()}원
                                 </div>
-                                <Link to={`/campaigns/${campaign.id}`}>
-                                  <Button variant="outline" size="sm" className="mt-2 bg-transparent">
-                                    상세보기
-                                  </Button>
-                                </Link>
+                                <div className="flex gap-2 mt-2">
+                                  {!participant.isPaid && (
+                                    <Button size="sm" className="bg-hey-gradient text-white">
+                                      결제하기
+                                    </Button>
+                                  )}
+                                  <Link to={`/campaigns/${participant?.groupPurchase?.id || '#'}`}>
+                                    <Button variant="outline" size="sm" className="bg-transparent">
+                                      상세보기
+                                    </Button>
+                                  </Link>
+                                </div>
                               </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <div className="text-center py-8 text-purple-600">
+                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-purple-400" />
                           <p>아직 참여한 공구가 없습니다.</p>
                           <Link to="/dashboard">
                             <Button className="mt-4 bg-hey-gradient">공구 둘러보기</Button>
@@ -466,7 +603,7 @@ export default function MyPage() {
 
                 {/* Payments Tab */}
                 <TabsContent value="payments" className="space-y-6">
-                  <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <CreditCard className="w-5 h-5" />
@@ -498,7 +635,7 @@ export default function MyPage() {
                   </Card>
 
                   {/* Order History */}
-                  <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <CreditCard className="w-5 h-5" />
@@ -510,12 +647,12 @@ export default function MyPage() {
                         {mockOrders.map((order) => (
                           <div
                             key={order.id}
-                            className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg"
+                            className="flex items-center justify-between p-4 bg-purple-50/50 rounded-lg hover:bg-purple-100/50 transition-colors"
                           >
                             <div>
-                              <h3 className="font-semibold text-gray-900">{order.campaignTitle}</h3>
-                              <p className="text-sm text-gray-600">{order.productName}</p>
-                              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                              <h3 className="font-semibold text-purple-800">{order.campaignTitle}</h3>
+                              <p className="text-sm text-purple-600">{order.productName}</p>
+                              <div className="flex items-center gap-4 mt-2 text-sm text-purple-600">
                                 <span className="flex items-center gap-1">
                                   <Calendar className="w-4 h-4" />
                                   {order.orderDate}
@@ -525,7 +662,7 @@ export default function MyPage() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-lg font-bold text-gray-900">{order.amount.toLocaleString()}원</div>
+                              <div className="text-lg font-bold text-purple-700">{order.amount.toLocaleString()}원</div>
                               {getStatusBadge(order.status)}
                             </div>
                           </div>
@@ -535,7 +672,7 @@ export default function MyPage() {
                   </Card>
 
                   {/* BNPL Status */}
-                  <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Clock className="w-5 h-5" />
@@ -551,7 +688,7 @@ export default function MyPage() {
                               className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200"
                             >
                               <div className="flex items-center justify-between mb-3">
-                                <h3 className="font-semibold text-gray-900">{bnpl.productName}</h3>
+                                <h3 className="font-semibold text-purple-800">{bnpl.productName}</h3>
                                 <div className="flex items-center gap-2">
                                   {getStatusBadge(bnpl.status)}
                                   {bnpl.status === "active" && (
@@ -569,19 +706,19 @@ export default function MyPage() {
                               </div>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                 <div>
-                                  <span className="text-gray-500">총 금액</span>
+                                  <span className="text-purple-500">총 금액</span>
                                   <div className="font-semibold">{bnpl.totalAmount.toLocaleString()}원</div>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">월 납부액</span>
+                                  <span className="text-purple-500">월 납부액</span>
                                   <div className="font-semibold">{bnpl.monthlyPayment.toLocaleString()}원</div>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">남은 횟수</span>
+                                  <span className="text-purple-500">남은 횟수</span>
                                   <div className="font-semibold">{bnpl.remainingPayments}회</div>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">다음 결제일</span>
+                                  <span className="text-purple-500">다음 결제일</span>
                                   <div className="font-semibold">{bnpl.nextPaymentDate}</div>
                                 </div>
                               </div>
@@ -589,8 +726,8 @@ export default function MyPage() {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <div className="text-center py-8 text-purple-600">
+                          <CreditCard className="w-12 h-12 mx-auto mb-4 text-purple-400" />
                           <p>진행 중인 BNPL 결제가 없습니다.</p>
                         </div>
                       )}
@@ -600,7 +737,7 @@ export default function MyPage() {
 
                 {/* Settings Tab */}
                 <TabsContent value="settings">
-                  <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Settings className="w-5 h-5" />
@@ -611,19 +748,19 @@ export default function MyPage() {
                       <div className="space-y-4">
                         <h3 className="text-lg font-semibold">알림 설정</h3>
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-lg">
                             <div>
                               <div className="font-medium">새로운 공구 알림</div>
-                              <div className="text-sm text-gray-500">관심 카테고리의 새 공구가 등록될 때 알림</div>
+                              <div className="text-sm text-purple-600">관심 카테고리의 새 공구가 등록될 때 알림</div>
                             </div>
                             <Button variant="outline" size="sm">
                               설정
                             </Button>
                           </div>
-                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-lg">
                             <div>
                               <div className="font-medium">결제 알림</div>
-                              <div className="text-sm text-gray-500">BNPL 결제일 및 공구 마감 알림</div>
+                              <div className="text-sm text-purple-600">BNPL 결제일 및 공구 마감 알림</div>
                             </div>
                             <Button variant="outline" size="sm">
                               설정
