@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.request.PaymentCancellationRequest;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.request.PaymentRequest;
+import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.response.BNPLRemainResponse;
+import xyz.jinjin99.gongguyoung.backend.domain.payment.service.BnplService;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.service.PaymentService;
 
 @Tag(name = "결제", description = "결제 관련 API")
@@ -19,6 +21,7 @@ import xyz.jinjin99.gongguyoung.backend.domain.payment.service.PaymentService;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final BnplService bnplService;
 
     @PostMapping
     @Operation(summary = "공동구매 결제 참여 ", description = "회원이 공동구매 참여하여 결제한다. 초기데이터가 없어서 example 에는 값이 안들어가있어요 추후에 고칠게요")
@@ -40,5 +43,11 @@ public class PaymentController {
 
 
         return null;
+    }
+
+    @GetMapping("/bnpl")
+    public ResponseEntity<BNPLRemainResponse> getBNPLRemain(@RequestParam Long memberId){
+        BNPLRemainResponse bnplRemain = bnplService.getBNPLRemain(memberId);
+        return ResponseEntity.ok(bnplRemain);
     }
 }
