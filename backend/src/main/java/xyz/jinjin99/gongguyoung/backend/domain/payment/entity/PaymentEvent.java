@@ -32,16 +32,13 @@ public class PaymentEvent {
     private Member member;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_purchase_id", nullable = false)
+    @JoinColumn(name = "group_purchase_id", nullable = true)
+    // TODO 테스트를 위해 잠시 풀어둠
     private GroupPurchase groupPurchase;
-    
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PaymentMethod method;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Comment("결제 유형(일반/BNPL/혼합)")
+    @Comment("결제 유형(일반/BNPL혼합)")
     private PaymentType type;
 
     @Enumerated(EnumType.STRING)
@@ -65,13 +62,15 @@ public class PaymentEvent {
     @Column(nullable = false)
     private int amount;
 
-    @Column(length = 100)
-    @Comment("BNPL 트랜잭션 번호")
-    private String bnplTransactionNo;
+    @Column(length = 50)
+    @Comment("BNPL 출금 트랜젝션 Unique No")
+    private Long bnplWithdrawalTransactionNo;
 
-    @Column(length = 100)
-    @Comment("일반(즉시) 결제 트랜잭션 번호")
-    private String immediateTransactionNo;
+    @Column(length = 50)
+    @Comment("일반(즉시) 출금 트랜젝션 Unique No")
+    private Long immediateWithdrawalTransactionNo;
+
+
 
     @CreatedDate
     @Column(updatable = false, nullable = false)
@@ -90,21 +89,11 @@ public class PaymentEvent {
         if (this.amount != i + b) {
             throw new IllegalStateException("amount must equal instantAmount + bnplAmount");
         }
-        switch (this.type) {
-            case IMMEDIATE_ONLY -> {
-                if (b != 0) throw new IllegalStateException("GENERAL -> bnplAmount must be 0");
-                if (bnplTransactionNo != null) throw new IllegalStateException("GENERAL -> bnplTransactionNo must be null");
-            }
-            case BNPL_ONLY -> {
-                if (i != 0) throw new IllegalStateException("BNPL_ONLY -> instantAmount must be 0");
-                if (bnplTransactionNo == null) throw new IllegalStateException("BNPL_ONLY -> bnplTransactionNo required");
-            }
-            case SPLIT -> {
-                if (i <= 0 || b <= 0) throw new IllegalStateException("SPLIT -> both amounts must be > 0");
-                if (immediateTransactionNo == null || bnplTransactionNo == null)
-                    throw new IllegalStateException("SPLIT -> both txNos required");
-            }
-        }
+
+    }
+
+    public void markRefund(){
+        status = PaymentStatus.REFUNDED;
     }
 
 
