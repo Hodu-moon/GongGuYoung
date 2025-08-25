@@ -168,6 +168,12 @@ public class MemberService {
                 .build();
     }
 
+    public Member getMember(Long id){
+
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("회원이 존재하지 않습니다."));
+    }
+
 
 
 
