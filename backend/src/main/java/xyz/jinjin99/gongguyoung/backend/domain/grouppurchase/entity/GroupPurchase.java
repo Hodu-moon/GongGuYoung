@@ -48,7 +48,7 @@ public class GroupPurchase {
     private Integer currentCount = 0;
 
     @Column(nullable = false)
-    private String userKey;
+    private String accountNo;
 
     @Builder.Default
     @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
