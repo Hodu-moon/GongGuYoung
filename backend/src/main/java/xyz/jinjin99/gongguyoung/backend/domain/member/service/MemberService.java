@@ -15,12 +15,14 @@ import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.InquireDemand
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.CreateDemandDepositAccountResponse;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.InquireDemandDepositAccountListResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.request.SignupRequest;
+import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.MemberAccountsNo;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.SignupResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.entity.Member;
 import xyz.jinjin99.gongguyoung.backend.domain.member.repository.MemberRepository;
 import xyz.jinjin99.gongguyoung.backend.global.utils.PasswordUtil;
 
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -150,6 +152,28 @@ public class MemberService {
 
         throw new RuntimeException("ID 비밀번호 맞지 않음");
     }
+
+    public MemberAccountsNo getAccountNo(Long memberId){
+        Optional<Member> byId = memberRepository.findById(memberId);
+
+        if(byId.isEmpty()){
+            throw new RuntimeException("member Not Found Exception");
+        }
+
+        Member member = byId.get();
+
+        return MemberAccountsNo.builder()
+                .starterAccountNo(member.getStarterAccountNo())
+                .flexAccountNo(member.getFlexAccountNo())
+                .build();
+    }
+
+    public Member getMember(Long id){
+
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("회원이 존재하지 않습니다."));
+    }
+
 
 
 
