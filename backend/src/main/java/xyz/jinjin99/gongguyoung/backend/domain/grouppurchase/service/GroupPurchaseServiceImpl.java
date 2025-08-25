@@ -23,7 +23,6 @@ import xyz.jinjin99.gongguyoung.backend.global.exception.AccountCreationExceptio
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +37,8 @@ public class GroupPurchaseServiceImpl implements GroupPurchaseService {
     private final DemandDepositClient demandDepositClient;
     private final MemberClient memberClient;
 
+    private final String GROUP_PURCHASE_EMAIL = "gongguyoung@jinjin99.xyz";
+
     @Value("${account.starter.type-unique-no}")
     private String starterUniqueNo;
 
@@ -47,44 +48,46 @@ public class GroupPurchaseServiceImpl implements GroupPurchaseService {
         Product product = productRepository.findById(request.getProductId().longValue())
                 .orElseThrow(() -> new ProductNotFoundException(request.getProductId().longValue()));
 
-        String generatedEmail = generateEmailForGroupPurchase();
         String userKey;
         try {
-            userKey = Optional.ofNullable(memberClient.createMember(generatedEmail).getUserKey())
-                        .orElseThrow(() -> new MemberCreationException("Member creation returned null userKey for email: " + generatedEmail));
+            userKey = Optional.ofNullable(memberClient.getOrCreateMember(GROUP_PURCHASE_EMAIL).getUserKey())
+                    .orElseThrow(() -> new MemberCreationException(
+                            "Member creation returned null userKey for email: " + GROUP_PURCHASE_EMAIL));
         } catch (Exception e) {
-            throw new MemberCreationException("Failed to create member with email: " + generatedEmail, e);
+            throw new MemberCreationException("Failed to create member with email: " + GROUP_PURCHASE_EMAIL, e);
         }
-        
+
+        GroupPurchase groupPurchase;
         try {
-            demandDepositClient.createDemandDepositAccount(
+            var res = demandDepositClient.createDemandDepositAccount(
                     CreateDemandDepositAccountRequest.builder()
                             .header(Header.builder().userKey(userKey).build())
                             .accountTypeUniqueNo(starterUniqueNo)
                             .build());
+
+            if (res == null || res.getRecord() == null || res.getRecord().getAccountNo() == null) {
+                throw new AccountCreationException("Account creation returned null response for email: " + GROUP_PURCHASE_EMAIL);
+            }
+
+            groupPurchase = GroupPurchase.builder()
+                    .product(product)
+                    .title(request.getTitle())
+                    .context(request.getContext())
+                    .targetCount(request.getTargetCount())
+                    .endAt(request.getEndAt())
+                    .discountedPrice(request.getDiscountedPrice())
+                    .accountNo(res.getRecord().getAccountNo())
+                    .build();
         } catch (Exception e) {
-            throw new AccountCreationException("Failed to create demand deposit account for userKey: " + userKey, e);
+            throw new AccountCreationException("Failed to create demand deposit account for email: " + GROUP_PURCHASE_EMAIL, e);
         }
 
-        GroupPurchase groupPurchase = GroupPurchase.builder()
-                .product(product)
-                .title(request.getTitle())
-                .context(request.getContext())
-                .targetCount(request.getTargetCount())
-                .endAt(request.getEndAt())
-                .discountedPrice(request.getDiscountedPrice())
-                .userKey(userKey)
-                .build();
         GroupPurchase savedGroupPurchase = groupPurchaseRepository.save(groupPurchase);
 
         // 스케쥴링 단계
         delayedJobService.scheduleGroupPurchaseExpiry(savedGroupPurchase.getId(), request.getEndAt());
 
         return GroupPurchaseResponse.from(savedGroupPurchase);
-    }
-
-    private String generateEmailForGroupPurchase() {
-        return "grouppurchase-" + UUID.randomUUID().toString().substring(0, 8) + "@gongguyoung.jinjin99.xyz";
     }
 
     @Override
