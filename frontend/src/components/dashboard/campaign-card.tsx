@@ -41,7 +41,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             className="w-20 h-20 object-cover rounded-lg transition-transform duration-300 group-hover:scale-105 hover:shadow-md"
           />
           <div className="flex-1">
-            <h4 className="font-medium text-sm">{campaign.product.name}</h4>
+            <h4 className="font-bold text-sm">{campaign.product.name}</h4>
             <p className="text-sm text-gray-600 mt-1">{campaign.description}</p>
           </div>
         </div>
@@ -78,7 +78,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
 
         <Link to={`/campaigns/${campaign.id}`}>
           <Button
-            className={`w-full transition-all duration-300 ${campaign.status === "active" ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white hover:shadow-lg" : ""}`}
+            className={`font-bold w-full transition-all duration-300 ${campaign.status === "active" ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white hover:shadow-lg" : ""}`}
             disabled={campaign.status !== "active"}
           >
             {campaign.status === "active" ? "참여하기" : campaign.status === "completed" ? "완료됨" : "취소됨"}
