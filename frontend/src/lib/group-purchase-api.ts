@@ -1,15 +1,15 @@
 import { api } from "@/api/api";
 
-// 공구 API 서비스
+// ===== 백엔드 원본 타입 =====
 export interface GroupPurchaseData {
   id: number;
   title: string;
   context: string;
   targetCount: number;
   currentCount: number;
-  status: string;
-  endAt: string;
-  createdAt: string;
+  status: string; // WAITING | ACTIVE | COMPLETED | CANCELLED ...
+  endAt: string;  // ISO
+  createdAt: string; // ISO
   productId: number;
   productName: string;
   productPrice: number;
@@ -26,29 +26,125 @@ export interface ParticipantData {
   groupPurchase: GroupPurchaseData;
 }
 
+// ===== UI에서 쓰기 쉬운 타입 =====
+export type UICampaign = {
+  id: string;
+  title: string;
+  description: string;
+  status: "WAITING" | "COMPLETE" | "CANCELLED";
+  startDate?: string;
+  endDate: string;
+  createdAt?: string;
+  participants: number;
+  discountPrice: number;
+  product: {
+    name: string;
+    originalPrice: number;
+    imageUrl: string;
+  };
+  targetQuantity: number;
+  currentQuantity: number;
+  viewCount:number;
+};
+
 // API 기본 URL
 const API_BASE_URL = "/api/v1";
 
 export class GroupPurchaseApi {
-  // 모든 공구 목록 조회
+  // 모든 공구 목록 조회 (백엔드 원본 타입)
   static async getAllGroupPurchases(): Promise<GroupPurchaseData[]> {
     try {
-      // API_BASE_URL을 굳이 합치지 말고, 인스턴스 baseURL에 맡기세요.
-      // 엔드포인트만 넘기면 됩니다.
-      const res = await api.get<GroupPurchaseData[]>("/v1/group-purchase");
-
-      // axios는 2xx면 이 줄까지 오고, 4xx/5xx면 catch로 떨어집니다.
-      // 그러니 res.status 체크나 response.ok는 불필요해요.
-      console.log("응답 데이터", res.data);
+      const res = await api.get<GroupPurchaseData[]>(
+        `${API_BASE_URL}/group-purchase`
+      );
       return res.data;
     } catch (err) {
       console.error("Error fetching group purchases:", err);
-      // 백엔드 연결 실패 시 모의 데이터 반환
       return this.getMockGroupPurchases();
     }
   }
 
-  // 모의 데이터 (백엔드 구조에 맞게 조정)
+  // === (선택) 사용자가 참여/개설 목록: 필요 시 교체 ===
+  static async getUserParticipatedGroupPurchases(
+    userId: string
+  ): Promise<ParticipantData[]> {
+    try {
+      const all = await this.getAllGroupPurchases();
+      return [
+        {
+          id: 1,
+          memberId: Number(userId) || 1,
+          groupPurchaseId: all[0]?.id ?? 1,
+          isPaid: true,
+          joinedAt: "2024-01-21T10:30:00",
+          groupPurchase: all[0],
+        },
+        {
+          id: 2,
+          memberId: Number(userId) || 1,
+          groupPurchaseId: all[1]?.id ?? 2,
+          isPaid: false,
+          joinedAt: "2024-01-22T15:20:00",
+          groupPurchase: all[1],
+        },
+      ];
+    } catch (error) {
+      console.error("Error fetching user participated group purchases:", error);
+      return [];
+    }
+  }
+
+  static async getUserCreatedGroupPurchases(
+    userId: string
+  ): Promise<GroupPurchaseData[]> {
+    try {
+      const all = await this.getAllGroupPurchases();
+      return [all[2]].filter(Boolean) as GroupPurchaseData[];
+    } catch (error) {
+      console.error("Error fetching user created group purchases:", error);
+      return [];
+    }
+  }
+
+  // === 어댑터: 백엔드 응답 -> UI에서 쓰기 편한 형태 ===
+  static adaptToUI(gp: GroupPurchaseData): UICampaign {
+    const now = Date.now();
+    const end = new Date(gp.endAt).getTime();
+
+    // 우선순위: CANCELLED -> COMPLETE(마감) -> WAITING
+    let status: UICampaign["status"];
+    const raw = (gp.status || "").toUpperCase();
+    if (raw === "CANCELLED" || raw === "CANCELED") status = "CANCELLED";
+    else if (end <= now || raw === "COMPLETED") status = "COMPLETE";
+    else status = "WAITING";
+
+    return {
+      id: String(gp.id),
+      title: gp.title,
+      description: gp.productDescription || gp.context || "",
+      status,
+      endDate: gp.endAt,
+      createdAt: gp.createdAt,
+      participants: gp.currentCount ?? 0,
+      discountPrice: gp.productPrice, // 별도 할인값 없으면 productPrice 사용
+      product: {
+        name: gp.productName,
+        originalPrice: gp.productPrice,
+        imageUrl: gp.productImageUrl || "/placeholder.svg",
+      },
+      targetQuantity: gp.targetCount ?? 0,
+      currentQuantity: gp.currentCount ?? 0,
+    };
+  }
+
+  // 대시보드에서 바로 쓰게: API 호출 + 어댑트까지
+  static async fetchDashboardCampaigns(): Promise<UICampaign[]> {
+    const raw = await this.getAllGroupPurchases();
+    console.log("대시보드", raw);
+    return raw.map(this.adaptToUI);
+  }
+
+  // === 모의 데이터 ===
   private static getMockGroupPurchases(): GroupPurchaseData[] {
     return [
       {
@@ -58,8 +154,8 @@ export class GroupPurchaseApi {
         targetCount: 20,
         currentCount: 15,
         status: "ACTIVE",
-        endAt: "2024-02-15T23:59:59",
-        createdAt: "2024-01-20T10:00:00",
+        endAt: "2026-12-31T23:59:59",
+        createdAt: "2025-08-01T10:00:00",
         productId: 1,
         productName: "Campbell Biology 11th Edition",
         productPrice: 95000,
@@ -73,8 +169,8 @@ export class GroupPurchaseApi {
         targetCount: 30,
         currentCount: 25,
         status: "ACTIVE",
-        endAt: "2024-02-20T23:59:59",
-        createdAt: "2024-01-18T14:30:00",
+        endAt: "2026-11-30T23:59:59",
+        createdAt: "2025-08-10T14:30:00",
         productId: 2,
         productName: "간호학과 실습복 세트",
         productPrice: 80000,
@@ -97,59 +193,5 @@ export class GroupPurchaseApi {
         productDescription: "공학용 고급 계산기",
       },
     ];
-  }
-
-  // 사용자가 참여한 공구 목록 (모의 데이터 - 실제 API는 백엔드에서 구현 필요)
-  static async getUserParticipatedGroupPurchases(
-    userId: string
-  ): Promise<ParticipantData[]> {
-    try {
-      // TODO: 실제 API 엔드포인트가 생기면 교체
-      // const response = await fetch(`${API_BASE_URL}/group-purchase/user/${userId}/participated`)
-
-      // 현재는 모의 데이터 반환
-      const allPurchases = await this.getAllGroupPurchases();
-      console.log("반응반응 한번 볼까?", allPurchases);
-      return [
-        {
-          id: 1,
-          memberId: 1,
-          groupPurchaseId: 1,
-          isPaid: true,
-          joinedAt: "2024-01-21T10:30:00",
-          groupPurchase: allPurchases[0],
-        },
-        {
-          id: 2,
-          memberId: 1,
-          groupPurchaseId: 2,
-          isPaid: false,
-          joinedAt: "2024-01-22T15:20:00",
-          groupPurchase: allPurchases[1],
-        },
-      ];
-    } catch (error) {
-      console.error("Error fetching user participated group purchases:", error);
-      return [];
-    }
-  }
-
-  // 사용자가 개설한 공구 목록 (모의 데이터 - 실제 API는 백엔드에서 구현 필요)
-  static async getUserCreatedGroupPurchases(
-    userId: string
-  ): Promise<GroupPurchaseData[]> {
-    try {
-      // TODO: 실제 API 엔드포인트가 생기면 교체
-      // const response = await fetch(`${API_BASE_URL}/group-purchase/user/${userId}/created`)
-
-      // 현재는 모의 데이터 반환
-      const allPurchases = await this.getAllGroupPurchases();
-
-      // 사용자가 개설한 공구로 가정 (실제로는 createdBy 필드가 필요)
-      return [allPurchases[2]]; // 공학용 계산기 공구를 개설한 것으로 가정
-    } catch (error) {
-      console.error("Error fetching user created group purchases:", error);
-      return [];
-    }
   }
 }
