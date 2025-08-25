@@ -31,15 +31,14 @@ export default function CreateCampaignPage() {
   // 상품 관련 상태
   const [products, setProducts] = useState<any[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
-  const [hasMoreProducts, setHasMoreProducts] = useState(true)
-  const [displayedProducts, setDisplayedProducts] = useState<any[]>([])
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const observerRef = useRef<HTMLDivElement>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const productsPerPage = 6
   
   // 검색 관련 상태
   const [searchQuery, setSearchQuery] = useState("")
   const [filteredProducts, setFilteredProducts] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  
 
   const steps = [
     { number: 1, title: "상품 선택", icon: ShoppingBag, description: "공동구매할 상품을 선택하세요" },
@@ -65,83 +64,40 @@ export default function CreateCampaignPage() {
   // 검색 함수
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query)
+    setCurrentPage(1) // 검색 시 첫 페이지로 이동
     
     if (query.trim() === "") {
-      // 검색어가 없으면 전체 상품에서 처음 6개 표시
       setIsSearching(false)
       setFilteredProducts([])
-      setDisplayedProducts(products.slice(0, 6))
-      setCurrentIndex(6)
-      setHasMoreProducts(products.length > 6)
     } else {
-      // 검색어가 있으면 필터링된 상품들 표시
       setIsSearching(true)
       const filtered = products.filter(product => 
         product.name.toLowerCase().includes(query.toLowerCase()) ||
         product.description.toLowerCase().includes(query.toLowerCase())
       )
       setFilteredProducts(filtered)
-      setDisplayedProducts(filtered.slice(0, 6))
-      setCurrentIndex(6)
-      setHasMoreProducts(filtered.length > 6)
     }
   }, [products])
 
-  // 표시할 상품을 더 로드하는 함수
-  const loadMoreDisplayedProducts = useCallback((loadCount = 6) => {
-    if (loadingProducts || !hasMoreProducts) return
-
-    setLoadingProducts(true)
-    
+  // 현재 페이지에 표시할 상품들 계산
+  const getCurrentPageProducts = useCallback(() => {
     const sourceProducts = isSearching ? filteredProducts : products
-    const nextIndex = currentIndex + loadCount
-    const newDisplayedProducts = sourceProducts.slice(currentIndex, nextIndex)
-    
-    setDisplayedProducts(prev => [...prev, ...newDisplayedProducts])
-    setCurrentIndex(nextIndex)
-    
-    // 더 이상 로드할 상품이 없으면 hasMoreProducts를 false로 설정
-    if (nextIndex >= sourceProducts.length) {
-      setHasMoreProducts(false)
-    }
-    
-    setLoadingProducts(false)
-  }, [currentIndex, loadingProducts, hasMoreProducts, products, filteredProducts, isSearching])
+    const startIndex = (currentPage - 1) * productsPerPage
+    const endIndex = startIndex + productsPerPage
+    return sourceProducts.slice(startIndex, endIndex)
+  }, [products, filteredProducts, isSearching, currentPage, productsPerPage])
+
+  // 총 페이지 수 계산
+  const getTotalPages = useCallback(() => {
+    const sourceProducts = isSearching ? filteredProducts : products
+    return Math.ceil(sourceProducts.length / productsPerPage)
+  }, [products, filteredProducts, isSearching, productsPerPage])
 
   // 초기 로드
   useEffect(() => {
-    const initializeProducts = async () => {
-      const allProducts = await fetchAllProducts()
-      if (allProducts.length > 0) {
-        // 초기에 6개만 표시
-        setDisplayedProducts(allProducts.slice(0, 6))
-        setCurrentIndex(6)
-        setHasMoreProducts(allProducts.length > 6)
-      }
-    }
-    
-    initializeProducts()
+    fetchAllProducts()
   }, [fetchAllProducts])
 
-  // 무한 스크롤 옵저버
-  useEffect(() => {
-    if (!observerRef.current) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && hasMoreProducts && !loadingProducts) {
-          loadMoreDisplayedProducts(6)
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    observer.observe(observerRef.current)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [loadMoreDisplayedProducts, hasMoreProducts, loadingProducts])
 
   const handleSubmit = async () => {
     if (currentStep < 4) {
@@ -179,9 +135,7 @@ export default function CreateCampaignPage() {
   }
 
   const handleProductSelect = (productId: number) => {
-    // displayedProducts와 전체 products 모두에서 검색
-    const product = displayedProducts.find(p => p.id === productId) || 
-                   products.find(p => p.id === productId)
+    const product = products.find(p => p.id === productId)
     if (product) {
       setSelectedProduct(product)
       setFormData(prev => ({ ...prev, productId: productId.toString() }))
@@ -218,7 +172,7 @@ export default function CreateCampaignPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-8 pb-24">
           {/* Header */}
           <div className="mb-8">
             <Link to="/dashboard">
@@ -324,7 +278,7 @@ export default function CreateCampaignPage() {
                   </div>
 
                   <div className="grid md:grid-cols-3 gap-4">
-                    {displayedProducts.map((product) => (
+                    {getCurrentPageProducts().map((product) => (
                       <div
                         key={product.id}
                         onClick={() => handleProductSelect(product.id)}
@@ -363,6 +317,41 @@ export default function CreateCampaignPage() {
                     ))}
                   </div>
 
+                  {/* 페이지네이션 */}
+                  {getTotalPages() > 1 && (
+                    <div className="flex justify-center items-center space-x-2 mt-8">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        이전
+                      </button>
+                      
+                      {Array.from({ length: getTotalPages() }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-2 rounded-lg border ${
+                            currentPage === pageNum
+                              ? 'bg-purple-600 text-white border-purple-600'
+                              : 'border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                      
+                      <button
+                        onClick={() => setCurrentPage(Math.min(getTotalPages(), currentPage + 1))}
+                        disabled={currentPage === getTotalPages()}
+                        className="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        다음
+                      </button>
+                    </div>
+                  )}
+
                   {/* 로딩 인디케이터 */}
                   {loadingProducts && (
                     <div className="flex justify-center items-center py-8">
@@ -371,21 +360,8 @@ export default function CreateCampaignPage() {
                     </div>
                   )}
 
-                  {/* 무한 스크롤 트리거 */}
-                  <div ref={observerRef} className="h-4" />
-
-                  {/* 더 이상 상품이 없을 때 */}
-                  {!hasMoreProducts && displayedProducts.length > 0 && (
-                    <div className="text-center py-4 text-gray-500">
-                      {isSearching 
-                        ? `"${searchQuery}" 검색 결과를 모두 불러왔습니다. (총 ${displayedProducts.length}개)`
-                        : `모든 상품을 불러왔습니다. (총 ${displayedProducts.length}개)`
-                      }
-                    </div>
-                  )}
-
                   {/* 상품이 하나도 없을 때 */}
-                  {!loadingProducts && displayedProducts.length === 0 && (
+                  {!loadingProducts && getCurrentPageProducts().length === 0 && (
                     <div className="text-center py-12">
                       <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                       {isSearching ? (
@@ -403,6 +379,20 @@ export default function CreateCampaignPage() {
                       )}
                     </div>
                   )}
+
+                  {/* 검색 결과 정보 */}
+                  {isSearching && getCurrentPageProducts().length > 0 && (
+                    <div className="text-center py-4 text-sm text-gray-600">
+                      "{searchQuery}" 검색 결과: 총 {filteredProducts.length}개 중 {((currentPage - 1) * productsPerPage) + 1}-{Math.min(currentPage * productsPerPage, filteredProducts.length)}개 표시
+                    </div>
+                  )}
+
+                  {!isSearching && getCurrentPageProducts().length > 0 && getTotalPages() > 1 && (
+                    <div className="text-center py-4 text-sm text-gray-600">
+                      총 {products.length}개 중 {((currentPage - 1) * productsPerPage) + 1}-{Math.min(currentPage * productsPerPage, products.length)}개 표시
+                    </div>
+                  )}
+
                 </div>
               )}
 
@@ -489,6 +479,7 @@ export default function CreateCampaignPage() {
                       </div>
                     </div>
                   )}
+
                 </div>
               )}
 
@@ -523,6 +514,7 @@ export default function CreateCampaignPage() {
                     />
                     <p className="text-sm text-gray-500">상품의 특징, 사용법, 주의사항 등을 자세히 설명해주세요.</p>
                   </div>
+
                 </div>
               )}
 
@@ -568,57 +560,63 @@ export default function CreateCampaignPage() {
                     </div>
                     <p className="text-sm text-gray-500">공동구매 신청을 받을 마감 날짜와 시간을 설정하세요.</p>
                   </div>
+
                 </div>
               )}
 
-              {/* Navigation Buttons */}
-              <div className="flex justify-between items-center pt-8 border-t border-gray-200 mt-8">
-                <div>
-                  {currentStep > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setCurrentStep(currentStep - 1)}
-                      className="px-6 py-3 border-2 border-gray-300 hover:border-purple-600"
-                    >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      이전 단계
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="flex gap-3">
-                  <Link to="/dashboard">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="px-6 py-3 text-gray-600 hover:bg-gray-100"
-                    >
-                      취소
-                    </Button>
-                  </Link>
-                  
+            </CardContent>
+          </div>
+        </div>
+
+        {/* Fixed Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex justify-between items-center max-w-4xl mx-auto">
+              <div>
+                {currentStep > 1 && (
                   <Button
                     type="button"
-                    onClick={handleSubmit}
-                    disabled={!canProceedToNextStep() || isSubmitting}
-                    className={`px-8 py-3 font-semibold transition-all duration-200 ${
-                      currentStep === 4
-                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
-                        : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white'
-                    }`}
+                    variant="outline"
+                    onClick={() => setCurrentStep(currentStep - 1)}
+                    className="px-6 py-3 border-2 border-gray-300 hover:border-purple-600"
                   >
-                    {isSubmitting ? (
-                      "생성 중..."
-                    ) : currentStep === 4 ? (
-                      "공구 생성하기"
-                    ) : (
-                      "다음 단계"
-                    )}
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    이전 단계
                   </Button>
-                </div>
+                )}
               </div>
-            </CardContent>
+              
+              <div className="flex gap-3">
+                <Link to="/dashboard">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="px-6 py-3 text-gray-600 hover:bg-gray-100"
+                  >
+                    취소
+                  </Button>
+                </Link>
+                
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={!canProceedToNextStep() || isSubmitting}
+                  className={`px-8 py-3 font-semibold transition-all duration-200 ${
+                    currentStep === 4
+                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
+                      : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white'
+                  }`}
+                >
+                  {isSubmitting ? (
+                    "생성 중..."
+                  ) : currentStep === 4 ? (
+                    "공구 생성하기"
+                  ) : (
+                    "다음 단계"
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
