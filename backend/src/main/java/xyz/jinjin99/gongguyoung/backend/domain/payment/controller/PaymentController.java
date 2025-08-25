@@ -29,14 +29,15 @@ public class PaymentController {
 
     @PostMapping("/refund")
     @Operation(summary = "공동구매 결제 취소 ", description = "회원이 공동구매 결제를 취소한다.")
-    public ResponseEntity<?> refundPayment(@RequestBody PaymentCancellationRequest request){
+
+    public ResponseEntity<?> refundPayment(@Valid @RequestBody PaymentCancellationRequest request){
         paymentService.refundPayment(request);
         return ResponseEntity.ok("성공적으로 취소하였습니다.");
     }
 
-
     @GetMapping("/bnpl/history")
-    public ResponseEntity<?> getBNPLHistory(){
+    public ResponseEntity<?> getBNPLHistory(@RequestParam Long memberId){
+
 
 
         return null;
