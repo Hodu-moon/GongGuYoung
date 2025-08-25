@@ -44,7 +44,7 @@ public class PaymentController {
     }
 
     @GetMapping("/bnpl/processing")
-    @Operation(summary = "진행중인 BNPL 확인 ", description = "진행중인 BNPL 확인, item name, item image url, bnpl status (PROCESSING, DONE), bnpl amount(얼마 갚아야 하는지 ) 정보를 담고 있음")
+    @Operation(summary = "진행중인 BNPL 확인 ", description = "진행중인 BNPL 확인, paymentId,  item name, item image url, bnpl status (PROCESSING, DONE), bnpl amount(얼마 갚아야 하는지 ) 정보를 담고 있음")
     public ResponseEntity<List<ProcessingBnplResponse>> getProcessingBNPL(@RequestParam Long memberId) {
 
         List<ProcessingBnplResponse> list = bnplService.listProcessBnplPayments(memberId);
@@ -52,7 +52,7 @@ public class PaymentController {
         return ResponseEntity.ok(list);
     }
 
-
+    // TODO 돈갚기
 
     @GetMapping("/bnpl")
     @Operation(summary = "BNPL 잔액 조회", description = "BNPL 잔액 조회")
