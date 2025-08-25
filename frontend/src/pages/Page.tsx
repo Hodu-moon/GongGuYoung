@@ -14,7 +14,10 @@ export default function HomePage() {
         <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
           <div className="container mx-auto px-4 py-3">
             <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+              >
                 <Image
                   src="/hey-young-logo.png"
                   alt="Hey Young Smart Campus"
@@ -26,7 +29,7 @@ export default function HomePage() {
                   <h1 className="text-lg font-bold text-white">Hey Young</h1>
                   <p className="text-xs text-white/80">Smart Campus</p>
                 </div>
-              </div>
+              </Link>
               <div className="flex gap-1">
                 {user ? (
                   <>
