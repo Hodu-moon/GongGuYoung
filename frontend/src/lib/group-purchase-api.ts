@@ -8,13 +8,14 @@ export interface GroupPurchaseData {
   targetCount: number;
   currentCount: number;
   status: string; // WAITING | ACTIVE | COMPLETED | CANCELLED ...
-  endAt: string;  // ISO
+  endAt: string; // ISO
   createdAt: string; // ISO
   productId: number;
   productName: string;
   productPrice: number;
   productImageUrl: string;
   productDescription: string;
+  viewCount: number;
 }
 
 export interface ParticipantData {
@@ -44,7 +45,7 @@ export type UICampaign = {
   };
   targetQuantity: number;
   currentQuantity: number;
-  viewCount:number;
+  viewCount: number;
 };
 
 // API 기본 URL
@@ -60,7 +61,7 @@ export class GroupPurchaseApi {
       return res.data;
     } catch (err) {
       console.error("Error fetching group purchases:", err);
-      return this.getMockGroupPurchases();
+      return [];
     }
   }
 
@@ -134,6 +135,7 @@ export class GroupPurchaseApi {
       },
       targetQuantity: gp.targetCount ?? 0,
       currentQuantity: gp.currentCount ?? 0,
+      viewCount: gp.viewCount ?? 0,
     };
   }
 
@@ -144,54 +146,67 @@ export class GroupPurchaseApi {
     return raw.map(this.adaptToUI);
   }
 
-  // === 모의 데이터 ===
-  private static getMockGroupPurchases(): GroupPurchaseData[] {
-    return [
-      {
-        id: 1,
-        title: "생화학 교재 공동구매",
-        context: "생화학 수업에 필요한 교재를 함께 구매해요",
-        targetCount: 20,
-        currentCount: 15,
-        status: "ACTIVE",
-        endAt: "2026-12-31T23:59:59",
-        createdAt: "2025-08-01T10:00:00",
-        productId: 1,
-        productName: "Campbell Biology 11th Edition",
-        productPrice: 95000,
-        productImageUrl: "/placeholder.svg",
-        productDescription: "생화학 필수 교재",
-      },
-      {
-        id: 2,
-        title: "간호학과 실습복 공구",
-        context: "간호학과 실습용 유니폼을 공동구매합니다",
-        targetCount: 30,
-        currentCount: 25,
-        status: "ACTIVE",
-        endAt: "2026-11-30T23:59:59",
-        createdAt: "2025-08-10T14:30:00",
-        productId: 2,
-        productName: "간호학과 실습복 세트",
-        productPrice: 80000,
-        productImageUrl: "/placeholder.svg",
-        productDescription: "간호학과 전용 실습복",
-      },
-      {
-        id: 3,
-        title: "공학용 계산기 공구",
-        context: "공학수학에 필요한 계산기 공동구매",
-        targetCount: 15,
-        currentCount: 12,
-        status: "COMPLETED",
-        endAt: "2024-01-30T23:59:59",
-        createdAt: "2024-01-10T09:15:00",
-        productId: 3,
-        productName: "TI-89 Titanium 계산기",
-        productPrice: 150000,
-        productImageUrl: "/placeholder.svg",
-        productDescription: "공학용 고급 계산기",
-      },
-    ];
+  //단건 조회용
+  static async getGroupPurchaseById(id: string): Promise<UICampaign | null> {
+    try {
+      const res = await api.get<GroupPurchaseData>(
+        `${API_BASE_URL}/group-purchase/${id}`
+      );
+      console.log("단건 조회",res);
+      return this.adaptToUI(res.data);
+    } catch (err) {
+      console.error("Error fetching group purchase detail:", err);
+      return null;
+    }
   }
+  // === 모의 데이터 ===
+  // private static getMockGroupPurchases(): GroupPurchaseData[] {
+  //   return [
+  //     {
+  //       id: 1,
+  //       title: "생화학 교재 공동구매",
+  //       context: "생화학 수업에 필요한 교재를 함께 구매해요",
+  //       targetCount: 20,
+  //       currentCount: 15,
+  //       status: "ACTIVE",
+  //       endAt: "2026-12-31T23:59:59",
+  //       createdAt: "2025-08-01T10:00:00",
+  //       productId: 1,
+  //       productName: "Campbell Biology 11th Edition",
+  //       productPrice: 95000,
+  //       productImageUrl: "/placeholder.svg",
+  //       productDescription: "생화학 필수 교재",
+  //     },
+  //     {
+  //       id: 2,
+  //       title: "간호학과 실습복 공구",
+  //       context: "간호학과 실습용 유니폼을 공동구매합니다",
+  //       targetCount: 30,
+  //       currentCount: 25,
+  //       status: "ACTIVE",
+  //       endAt: "2026-11-30T23:59:59",
+  //       createdAt: "2025-08-10T14:30:00",
+  //       productId: 2,
+  //       productName: "간호학과 실습복 세트",
+  //       productPrice: 80000,
+  //       productImageUrl: "/placeholder.svg",
+  //       productDescription: "간호학과 전용 실습복",
+  //     },
+  //     {
+  //       id: 3,
+  //       title: "공학용 계산기 공구",
+  //       context: "공학수학에 필요한 계산기 공동구매",
+  //       targetCount: 15,
+  //       currentCount: 12,
+  //       status: "COMPLETED",
+  //       endAt: "2024-01-30T23:59:59",
+  //       createdAt: "2024-01-10T09:15:00",
+  //       productId: 3,
+  //       productName: "TI-89 Titanium 계산기",
+  //       productPrice: 150000,
+  //       productImageUrl: "/placeholder.svg",
+  //       productDescription: "공학용 고급 계산기",
+  //     },
+  //   ];
+  // }
 }
