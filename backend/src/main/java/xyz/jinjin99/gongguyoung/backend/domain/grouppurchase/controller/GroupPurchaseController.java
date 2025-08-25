@@ -2,6 +2,7 @@ package xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -45,7 +46,9 @@ public interface GroupPurchaseController {
     @ApiResponse(
         responseCode = "200",
         description = "공동구매 목록 조회 성공",
-        content = @Content(schema = @Schema(implementation = GroupPurchaseResponse.class))
+        content = @Content(array = @ArraySchema(
+            schema = @Schema(implementation = GroupPurchaseResponse.class)
+        ))
     )
     ResponseEntity<List<GroupPurchaseResponse>> getAllGroupPurchases();
 
