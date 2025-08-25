@@ -9,5 +9,4 @@ import java.util.List;
 public interface PaymentRepository extends JpaRepository<PaymentEvent, Long> {
     List<PaymentEvent> findByMemberId(Long memberId);
     List<PaymentEvent> findByGroupPurchaseId(Long groupPurchaseId);
-    List<PaymentEvent> findByMethod(PaymentMethod method);
 }

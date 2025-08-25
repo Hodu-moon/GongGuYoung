@@ -15,6 +15,7 @@ import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.InquireDemand
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.CreateDemandDepositAccountResponse;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.InquireDemandDepositAccountListResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.request.SignupRequest;
+import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.MemberAccountsNo;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.SignupResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.entity.Member;
 import xyz.jinjin99.gongguyoung.backend.domain.member.repository.MemberRepository;
@@ -151,6 +152,22 @@ public class MemberService {
 
         throw new RuntimeException("ID 비밀번호 맞지 않음");
     }
+
+    public MemberAccountsNo getAccountNo(Long memberId){
+        Optional<Member> byId = memberRepository.findById(memberId);
+
+        if(byId.isEmpty()){
+            throw new RuntimeException("member Not Found Exception");
+        }
+
+        Member member = byId.get();
+
+        return MemberAccountsNo.builder()
+                .starterAccountNo(member.getStarterAccountNo())
+                .flexAccountNo(member.getFlexAccountNo())
+                .build();
+    }
+
 
 
 

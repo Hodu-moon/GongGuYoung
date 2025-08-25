@@ -35,13 +35,10 @@ public class PaymentEvent {
     @JoinColumn(name = "group_purchase_id", nullable = false)
     private GroupPurchase groupPurchase;
     
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PaymentMethod method;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Comment("결제 유형(일반/BNPL/혼합)")
+    @Comment("결제 유형(일반/BNPL혼합)")
     private PaymentType type;
 
     @Enumerated(EnumType.STRING)
@@ -90,21 +87,7 @@ public class PaymentEvent {
         if (this.amount != i + b) {
             throw new IllegalStateException("amount must equal instantAmount + bnplAmount");
         }
-        switch (this.type) {
-            case IMMEDIATE_ONLY -> {
-                if (b != 0) throw new IllegalStateException("GENERAL -> bnplAmount must be 0");
-                if (bnplTransactionNo != null) throw new IllegalStateException("GENERAL -> bnplTransactionNo must be null");
-            }
-            case BNPL_ONLY -> {
-                if (i != 0) throw new IllegalStateException("BNPL_ONLY -> instantAmount must be 0");
-                if (bnplTransactionNo == null) throw new IllegalStateException("BNPL_ONLY -> bnplTransactionNo required");
-            }
-            case SPLIT -> {
-                if (i <= 0 || b <= 0) throw new IllegalStateException("SPLIT -> both amounts must be > 0");
-                if (immediateTransactionNo == null || bnplTransactionNo == null)
-                    throw new IllegalStateException("SPLIT -> both txNos required");
-            }
-        }
+
     }
 
 
