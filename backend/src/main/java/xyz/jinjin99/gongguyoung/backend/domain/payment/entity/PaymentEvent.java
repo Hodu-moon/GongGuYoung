@@ -32,7 +32,7 @@ public class PaymentEvent {
     private Member member;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_purchase_id", nullable = true)
+    @JoinColumn(name = "group_purchase_id", nullable = false)
     // TODO 테스트를 위해 잠시 풀어둠
     private GroupPurchase groupPurchase;
 
