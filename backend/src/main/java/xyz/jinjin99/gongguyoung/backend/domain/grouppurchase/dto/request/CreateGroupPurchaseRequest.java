@@ -16,7 +16,7 @@ public class CreateGroupPurchaseRequest {
   @Schema(description = "공동구매 제목", example = "아이폰15 공동구매", required = true)
   private String title;
   
-  @Schema(description = "공동구매 글 내용", example = "최신 아이폰을 저렴하게 구매해요!", required = true)
+  @Schema(description = "공동구매 글 내용", example = "최신 아이폰을 공구 할 사람 구해요.", required = true)
   private String context;
   
   @Schema(description = "상품 ID", example = "1", required = true)

@@ -22,7 +22,7 @@ public class GroupPurchaseResponse {
     @Schema(description = "공동구매 제목", example = "아이폰15 공동구매")
     private final String title;
     
-    @Schema(description = "공동구매 글 내용", example = "최신 아이폰을 저렴하게 구매해요!")
+    @Schema(description = "공동구매 글 내용", example = "최신 아이폰을 공구 할 사람 구해요.")
     private final String context;
     
     @Schema(description = "목표 구매 갯수", example = "10")
@@ -52,7 +52,7 @@ public class GroupPurchaseResponse {
     @Schema(description = "상품 정가 (원 단위)", example = "1500000")
     private final Long productPrice;
     
-    @Schema(description = "상품 이미지 URL", example = "https://example.com/iphone15.jpg")
+    @Schema(description = "상품 이미지 URL", example = "/api/v1/image/1")
     private final String productImageUrl;
     
     @Schema(description = "상품 설명", example = "최신 A17 Pro 칩셋을 탑재한 프리미엄 스마트폰")
