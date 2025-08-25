@@ -275,29 +275,32 @@ export default function MyPage() {
                     </div>
                     <div className="text-sm text-purple-600">총 절약 금액</div>
                   </div>
-                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg">
-                    <div className="text-center mb-3">
-                      <div className="text-lg font-bold text-purple-600">BNPL 한도</div>
+                  <Link to="/bnpl">
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg hover:shadow-md transition-all duration-200 cursor-pointer">
+                      <div className="text-center mb-3">
+                        <div className="text-lg font-bold text-purple-600">BNPL 한도</div>
+                        <div className="text-xs text-purple-500">클릭하여 자세히 보기</div>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-purple-600">총 한도</span>
+                          <span className="font-semibold">{bnplCreditInfo.totalLimit.toLocaleString()}원</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-purple-600">사용 중</span>
+                          <span className="font-semibold text-red-600">
+                            {bnplCreditInfo.usedAmount.toLocaleString()}원
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-t pt-2">
+                          <span className="text-purple-600">사용 가능</span>
+                          <span className="font-bold text-green-600">
+                            {bnplCreditInfo.availableAmount.toLocaleString()}원
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-purple-600">총 한도</span>
-                        <span className="font-semibold">{bnplCreditInfo.totalLimit.toLocaleString()}원</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-purple-600">사용 중</span>
-                        <span className="font-semibold text-red-600">
-                          {bnplCreditInfo.usedAmount.toLocaleString()}원
-                        </span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span className="text-purple-600">사용 가능</span>
-                        <span className="font-bold text-green-600">
-                          {bnplCreditInfo.availableAmount.toLocaleString()}원
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  </Link>
                 </CardContent>
               </Card>
             </div>
