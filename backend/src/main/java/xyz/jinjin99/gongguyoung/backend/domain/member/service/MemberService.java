@@ -21,7 +21,6 @@ import xyz.jinjin99.gongguyoung.backend.domain.member.repository.MemberRepositor
 import xyz.jinjin99.gongguyoung.backend.global.utils.PasswordUtil;
 
 import java.util.Objects;
-import java.util.Optional;
 
 @Service
 @Slf4j
