@@ -74,5 +74,11 @@ public interface DemandDepositClient {
   UpdateDemandDepositAccountDepositResponse updateDemandDepositAccountDeposit(UpdateDemandDepositAccountDepositRequest request);
 
 
+  /**
+   * 계좌 잔액 조회
+   *
+   */
+
+  InquireDemandDepositAccountBalanceResponse inquireDemandDepositAccountBalance(InquireDemandDepositAccountBalanceRequest request);
 
 }

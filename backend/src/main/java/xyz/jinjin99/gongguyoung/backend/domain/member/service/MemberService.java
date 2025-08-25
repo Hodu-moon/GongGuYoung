@@ -62,8 +62,6 @@ public class MemberService {
         log.info("searchMember is null : {}", Objects.isNull(memberRecord));
         String starterAccountNo = null, bnplAccountNo = null, userKey = null ;
 
-
-
         String apiKey = managerClient.getOrCreateApiKey();
         // 2. 이메일로 서버에 회원이 존재하는지 확인
         if(Objects.isNull(memberRecord)){
@@ -112,8 +110,6 @@ public class MemberService {
                             .transactionSummary("회원가입")
                             .build()
             );
-
-
 
         }else{ // 회원이 존재하면
             userKey = memberRecord.getUserKey();
