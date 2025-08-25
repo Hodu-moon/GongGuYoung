@@ -32,6 +32,9 @@ public class PaymentService {
      *      3-2 일반 결제일때 일반결제 얼마
      *      그 후 저장
      *
+     *      TODO 결제 에는 출금계좌, 입금계좌
+     *          두개가 존재함 ->
+     *
      *      TODO transaction Summary 작성
      * @param paymentRequest
      */

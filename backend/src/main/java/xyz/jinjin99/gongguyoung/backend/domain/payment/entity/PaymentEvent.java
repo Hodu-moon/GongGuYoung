@@ -62,13 +62,23 @@ public class PaymentEvent {
     @Column(nullable = false)
     private int amount;
 
-    @Column(length = 100)
-    @Comment("BNPL 트랜잭션 번호")
-    private String bnplTransactionNo;
+    @Column(length = 50)
+    @Comment("BNPL 출금 트랜젝션 ID")
+    private String bnplWithdrawalTransactionNo;
 
-    @Column(length = 100)
-    @Comment("일반(즉시) 결제 트랜잭션 번호")
-    private String immediateTransactionNo;
+    @Column(length = 50)
+    @Comment("BNPL 입금 트랜젝션 ID")
+    private String bnplDepositTransactionNo;
+
+    @Column(length = 50)
+    @Comment("일반(즉시) 출금 트랜젝션 ID")
+    private String immediateWithdrawalTransactionNo;
+
+    @Column(length = 50)
+    @Comment("일반(즉시) 입금 트랜젝션 ID")
+    private String immediateDepositTransactionNo;
+
+
 
     @CreatedDate
     @Column(updatable = false, nullable = false)
