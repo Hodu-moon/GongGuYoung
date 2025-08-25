@@ -10,12 +10,20 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, ShoppingBag, Calendar, Target, DollarSign, Image as ImageIcon, FileText, Sparkles, Check, Loader2, Search, X } from "lucide-react"
+import { ArrowLeft, ShoppingBag, Calendar as CalendarIcon, Target, DollarSign, Image as ImageIcon, FileText, Sparkles, Check, Loader2, Search, X, Plus, User, Clock } from "lucide-react"
 import { Link } from 'react-router-dom'
 import axios from 'axios'
+import { useAuth } from "@/lib/auth-context"
+import { NotificationBell } from "@/components/notifications/notification-bell"
+import Image from "@/compat/NextImage"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format } from "date-fns"
+import { ko } from "date-fns/locale"
 
 export default function CreateCampaignPage() {
   const router = useRouter()
+  const { user, logout } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
@@ -39,12 +47,20 @@ export default function CreateCampaignPage() {
   const [filteredProducts, setFilteredProducts] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   
+  // 날짜/시간 관련 상태
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [selectedTime, setSelectedTime] = useState({ hour: "23", minute: "59" })
+  
+  // 임시 날짜/시간 상태 (확인 전)
+  const [tempDate, setTempDate] = useState<Date | undefined>(undefined)
+  const [tempTime, setTempTime] = useState({ hour: "23", minute: "59" })
+  
 
   const steps = [
     { number: 1, title: "상품 선택", icon: ShoppingBag, description: "공동구매할 상품을 선택하세요" },
     { number: 2, title: "공구 설정", icon: Target, description: "목표 수량과 할인가를 설정하세요" },
     { number: 3, title: "상세 정보", icon: FileText, description: "제목과 설명을 작성하세요" },
-    { number: 4, title: "마감 설정", icon: Calendar, description: "마감일을 설정하고 등록하세요" },
+    { number: 4, title: "마감 설정", icon: CalendarIcon, description: "마감일을 설정하고 등록하세요" },
   ]
 
   // 전체 상품 목록 가져오기 함수
@@ -118,12 +134,13 @@ export default function CreateCampaignPage() {
     }
 
     try {
-      // 실제로는 POST /api/v1/group-purchase 호출
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // POST /api/v1/group-purchase API 호출
+      const response = await axios.post('/api/v1/group-purchase', requestData)
       
       alert("공구가 성공적으로 생성되었습니다!")
       router.push("/dashboard")
     } catch (error) {
+      console.error('Error creating group purchase:', error)
       alert("공구 생성에 실패했습니다. 다시 시도해주세요.")
     } finally {
       setIsSubmitting(false)
@@ -131,7 +148,22 @@ export default function CreateCampaignPage() {
   }
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value }
+      
+      // 목표 수량이 변경되면 자동으로 할인 가격 계산
+      if (field === 'targetCount' && selectedProduct && value) {
+        const quantity = parseInt(value)
+        if (!isNaN(quantity) && quantity > 0) {
+          const discountRate = getDiscountRateByQuantity(quantity)
+          const discountAmount = Math.floor(selectedProduct.price * (discountRate / 100))
+          const discountedPrice = selectedProduct.price - discountAmount
+          newData.discountedPrice = discountedPrice.toString()
+        }
+      }
+      
+      return newData
+    })
   }
 
   const handleProductSelect = (productId: number) => {
@@ -148,48 +180,155 @@ export default function CreateCampaignPage() {
     handleSearch("")
   }
 
+  // 날짜/시간을 endAt 문자열로 변환
+  const updateEndAt = useCallback(() => {
+    if (selectedDate) {
+      const dateTime = new Date(selectedDate)
+      dateTime.setHours(parseInt(selectedTime.hour))
+      dateTime.setMinutes(parseInt(selectedTime.minute))
+      const isoString = dateTime.toISOString().slice(0, 16)
+      setFormData(prev => ({ ...prev, endAt: isoString }))
+    }
+  }, [selectedDate, selectedTime])
+
+  // 날짜나 시간이 변경될 때마다 endAt 업데이트
+  useEffect(() => {
+    updateEndAt()
+  }, [updateEndAt])
+
+  // 날짜/시간 유효성 검사
+  const isDateTimeValid = useCallback((date: Date | undefined, time: { hour: string, minute: string }) => {
+    if (!date) return false
+    
+    const now = new Date()
+    const selectedDateTime = new Date(date)
+    selectedDateTime.setHours(parseInt(time.hour), parseInt(time.minute), 0, 0)
+    
+    // 현재 시간보다 늦어야 함
+    if (selectedDateTime <= now) return false
+    
+    // 1일(24시간) 이후여야 함
+    const oneDayLater = new Date(now)
+    oneDayLater.setDate(oneDayLater.getDate() + 1)
+    
+    return selectedDateTime >= oneDayLater
+  }, [])
+
+  // 날짜/시간 확인 함수
+  const confirmDateTime = useCallback(() => {
+    if (tempDate && isDateTimeValid(tempDate, tempTime)) {
+      setSelectedDate(tempDate)
+      setSelectedTime(tempTime)
+    }
+  }, [tempDate, tempTime, isDateTimeValid])
+
   const canProceedToNextStep = () => {
     switch (currentStep) {
       case 1: return selectedProduct !== null
-      case 2: return formData.targetCount && formData.discountedPrice
+      case 2: return formData.targetCount && parseInt(formData.targetCount) > 0
       case 3: return formData.title && formData.context
-      case 4: return formData.endAt
+      case 4: return selectedDate !== undefined
       default: return false
     }
   }
 
+  // 수량에 따른 할인율 계산
+  const getDiscountRateByQuantity = (quantity: number) => {
+    if (quantity >= 61) return 10
+    if (quantity >= 41) return 8
+    if (quantity >= 21) return 5
+    if (quantity >= 10) return 3
+    return 0
+  }
+
+  // 자동 할인 가격 계산
+  const calculateDiscountedPrice = () => {
+    if (!selectedProduct || !formData.targetCount) return 0
+    const quantity = parseInt(formData.targetCount)
+    const discountRate = getDiscountRateByQuantity(quantity)
+    const discountAmount = Math.floor(selectedProduct.price * (discountRate / 100))
+    return selectedProduct.price - discountAmount
+  }
+
   const getSavingsAmount = () => {
-    if (!selectedProduct || !formData.discountedPrice) return 0
-    return selectedProduct.price - parseInt(formData.discountedPrice)
+    if (!selectedProduct || !formData.targetCount) return 0
+    const discountedPrice = calculateDiscountedPrice()
+    return selectedProduct.price - discountedPrice
   }
 
   const getDiscountPercentage = () => {
-    if (!selectedProduct || !formData.discountedPrice) return 0
-    const savings = getSavingsAmount()
-    return Math.round((savings / selectedProduct.price) * 100)
+    if (!selectedProduct || !formData.targetCount) return 0
+    const quantity = parseInt(formData.targetCount)
+    return getDiscountRateByQuantity(quantity)
   }
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      <div className="min-h-screen bg-hey-gradient">
+        <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex justify-between items-center">
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+              >
+                <Image
+                  src="/hey-young-logo.png"
+                  alt="Hey Young Smart Campus"
+                  width={36}
+                  height={36}
+                  className="rounded-lg"
+                />
+                <div>
+                  <h1 className="text-lg font-bold text-white">Hey Young</h1>
+                  <p className="text-xs text-white/80">Smart Campus</p>
+                </div>
+              </Link>
+              <div className="flex gap-1">
+                <NotificationBell />
+                <Link to="/my-page">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/20 p-2"
+                  >
+                    <User className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link to="/dashboard">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/20 p-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20 p-2"
+                  onClick={logout}
+                >
+                  로그아웃
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
         <div className="container mx-auto px-4 py-8 pb-24">
-          {/* Header */}
+          {/* Page Title */}
           <div className="mb-8">
-            <Link to="/dashboard">
-              <Button variant="ghost" className="mb-6 hover:bg-white/60 transition-all duration-200">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                대시보드로 돌아가기
-              </Button>
-            </Link>
             
             <div className="text-center mb-8">
               <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full">
+                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-full">
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
-                <h1 className="text-3xl font-bold text-purple-800">새 공동구매 만들기</h1>
+                <h1 className="text-3xl font-bold text-white">새 공동구매 만들기</h1>
               </div>
-              <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              <p className="text-white/80 text-lg max-w-2xl mx-auto">
                 단계별로 간단하게 공동구매를 등록하고, 같은 대학 학생들과 함께 더 저렴하게 구매하세요.
               </p>
             </div>
@@ -197,8 +336,8 @@ export default function CreateCampaignPage() {
             {/* Progress Steps */}
             <div className="max-w-4xl mx-auto mb-8">
               <div className="flex items-center justify-between relative">
-                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 -translate-y-1/2 z-0"></div>
-                <div className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600 -translate-y-1/2 z-0 transition-all duration-500"
+                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/20 -translate-y-1/2 z-0"></div>
+                <div className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-white to-white/80 -translate-y-1/2 z-0 transition-all duration-500"
                      style={{ width: `${((currentStep - 1) / 3) * 100}%` }}></div>
                 
                 {steps.map((step, index) => {
@@ -210,18 +349,18 @@ export default function CreateCampaignPage() {
                     <div key={step.number} className="flex flex-col items-center z-10">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
                         isCompleted 
-                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' 
+                          ? 'bg-white text-purple-600 shadow-lg' 
                           : isActive 
-                            ? 'bg-white border-2 border-purple-600 text-purple-600 shadow-lg' 
-                            : 'bg-white border-2 border-gray-200 text-gray-400'
+                            ? 'bg-white/90 backdrop-blur-sm border-2 border-white text-purple-600 shadow-lg' 
+                            : 'bg-white/50 backdrop-blur-sm border-2 border-white/30 text-white/60'
                       }`}>
                         {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                       </div>
                       <div className="mt-2 text-center">
-                        <div className={`text-sm font-medium ${isActive || isCompleted ? 'text-purple-700' : 'text-gray-400'}`}>
+                        <div className={`text-sm font-medium ${isActive || isCompleted ? 'text-white' : 'text-white/60'}`}>
                           {step.title}
                         </div>
-                        <div className="text-xs text-gray-500 max-w-24 mt-1">{step.description}</div>
+                        <div className="text-xs text-white/60 max-w-24 mt-1">{step.description}</div>
                       </div>
                     </div>
                   )
@@ -231,8 +370,8 @@ export default function CreateCampaignPage() {
           </div>
 
           {/* Main Content Card */}
-          <div className="max-w-4xl mx-auto shadow-xl border-0 rounded-2xl overflow-hidden bg-gradient-to-b from-purple-600 via-purple-600 to-white" style={{backgroundImage: 'linear-gradient(to bottom, rgb(147, 51, 234) 0%, rgb(236, 72, 153) 120px, rgb(255, 255, 255) 120px, rgb(255, 255, 255) 100%)'}}>
-            <CardHeader className="bg-transparent text-white p-8">
+          <div className="max-w-4xl mx-auto shadow-xl border-0 rounded-2xl overflow-hidden bg-white/95 backdrop-blur-sm">
+            <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-8">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-white/20 rounded-full">
                   {React.createElement(steps[currentStep - 1].icon, { className: "w-6 h-6" })}
@@ -241,12 +380,12 @@ export default function CreateCampaignPage() {
                   <CardTitle className="text-2xl font-bold text-white">
                     {steps[currentStep - 1].title}
                   </CardTitle>
-                  <p className="text-purple-100 mt-1">{steps[currentStep - 1].description}</p>
+                  <p className="text-white/90 mt-1">{steps[currentStep - 1].description}</p>
                 </div>
               </div>
             </CardHeader>
             
-            <CardContent className="px-8 pt-5 pb-8 bg-transparent">
+            <CardContent className="px-8 pt-5 pb-8">
               {/* Step 1: 상품 선택 */}
               {currentStep === 1 && (
                 <div className="space-y-6">
@@ -418,6 +557,33 @@ export default function CreateCampaignPage() {
                     </div>
                   )}
 
+                  {/* 할인율 안내 */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                    <h4 className="text-sm font-semibold text-blue-800 mb-3">📊 수량별 할인율</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                      <div className="text-center p-2 bg-white rounded-lg border">
+                        <div className="font-medium text-gray-700">1~9개</div>
+                        <div className="text-gray-500">0% 할인</div>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded-lg border">
+                        <div className="font-medium text-gray-700">10~20개</div>
+                        <div className="text-blue-600">3% 할인</div>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded-lg border">
+                        <div className="font-medium text-gray-700">21~40개</div>
+                        <div className="text-green-600">5% 할인</div>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded-lg border">
+                        <div className="font-medium text-gray-700">41~60개</div>
+                        <div className="text-orange-600">8% 할인</div>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded-lg border">
+                        <div className="font-medium text-gray-700">61개 이상</div>
+                        <div className="text-purple-600">10% 할인</div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid md:grid-cols-2 gap-8">
                     <div className="space-y-2">
                       <Label htmlFor="targetCount" className="text-sm font-semibold text-gray-700">
@@ -446,34 +612,38 @@ export default function CreateCampaignPage() {
                         <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <Input
                           id="discountedPrice"
-                          type="number"
-                          placeholder="35000"
-                          value={formData.discountedPrice}
-                          onChange={(e) => handleInputChange("discountedPrice", e.target.value)}
-                          className="pl-10 h-12 text-lg border-2 focus:border-purple-600"
-                          min="1"
+                          type="text"
+                          value={formData.discountedPrice ? parseInt(formData.discountedPrice).toLocaleString() + '원' : ''}
+                          readOnly
+                          className="pl-10 h-12 text-lg border-2 bg-gray-50 text-gray-600 cursor-not-allowed"
                         />
                       </div>
-                      <p className="text-sm text-gray-500">공동구매 시 적용될 할인 가격을 입력하세요.</p>
+                      <p className="text-sm text-gray-500">수량에 따라 자동으로 계산됩니다.</p>
                     </div>
                   </div>
 
-                  {selectedProduct && formData.discountedPrice && (
+                  {selectedProduct && (
                     <div className="bg-white border-2 border-green-200 rounded-xl p-6">
                       <div className="text-center mb-4">
                         <h4 className="text-lg font-semibold text-gray-800 mb-2">💰 할인 정보</h4>
                       </div>
                       <div className="grid md:grid-cols-3 gap-4">
                         <div className="text-center p-4 bg-green-50 rounded-lg">
-                          <div className="text-2xl font-bold text-green-600">{getDiscountPercentage()}%</div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {formData.targetCount ? getDiscountPercentage() : 0}%
+                          </div>
                           <div className="text-sm text-gray-600">할인율</div>
                         </div>
                         <div className="text-center p-4 bg-blue-50 rounded-lg">
-                          <div className="text-2xl font-bold text-blue-600">{parseInt(formData.discountedPrice).toLocaleString()}원</div>
+                          <div className="text-2xl font-bold text-blue-600">
+                            {formData.targetCount ? calculateDiscountedPrice().toLocaleString() : selectedProduct.price.toLocaleString()}원
+                          </div>
                           <div className="text-sm text-gray-600">할인 가격</div>
                         </div>
                         <div className="text-center p-4 bg-red-50 rounded-lg">
-                          <div className="text-2xl font-bold text-red-600">-{getSavingsAmount().toLocaleString()}원</div>
+                          <div className="text-2xl font-bold text-red-600">
+                            -{formData.targetCount ? getSavingsAmount().toLocaleString() : '0'}원
+                          </div>
                           <div className="text-sm text-gray-600">절약 금액</div>
                         </div>
                       </div>
@@ -543,21 +713,184 @@ export default function CreateCampaignPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="endAt" className="text-sm font-semibold text-gray-700">
+                  <div className="space-y-4">
+                    <Label className="text-sm font-semibold text-gray-700">
                       마감일시 *
                     </Label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input
-                        id="endAt"
-                        type="datetime-local"
-                        value={formData.endAt}
-                        onChange={(e) => handleInputChange("endAt", e.target.value)}
-                        className="pl-10 h-12 text-lg border-2 focus:border-purple-600"
-                        min={new Date().toISOString().slice(0, 16)}
-                      />
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {/* 날짜 선택 */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-gray-600">마감 날짜</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={`w-full justify-start text-left font-normal h-12 ${
+                                !selectedDate && "text-muted-foreground"
+                              }`}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {selectedDate ? (
+                                format(selectedDate, "PPP", { locale: ko })
+                              ) : (
+                                <span>날짜를 선택하세요</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-0 max-h-96 overflow-y-auto" align="start">
+                            <div className="p-4">
+                              <Calendar
+                                mode="single"
+                                selected={tempDate}
+                                onSelect={setTempDate}
+                                disabled={(date) => date < new Date()}
+                                initialFocus
+                              />
+                              
+                              {/* 시간 선택 */}
+                              <div className="mt-4 space-y-3 border-t pt-4">
+                                <Label className="text-sm font-medium">마감 시간</Label>
+                                <div className="flex gap-2">
+                                  <Select 
+                                    value={tempTime.hour} 
+                                    onValueChange={(value) => setTempTime(prev => ({ ...prev, hour: value }))}
+                                  >
+                                    <SelectTrigger className="flex-1">
+                                      <SelectValue placeholder="시" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from({ length: 24 }, (_, i) => (
+                                        <SelectItem key={i} value={i.toString().padStart(2, '0')}>
+                                          {i.toString().padStart(2, '0')}시
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Select 
+                                    value={tempTime.minute} 
+                                    onValueChange={(value) => setTempTime(prev => ({ ...prev, minute: value }))}
+                                  >
+                                    <SelectTrigger className="flex-1">
+                                      <SelectValue placeholder="분" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from({ length: 60 }, (_, i) => (
+                                        <SelectItem key={i} value={i.toString().padStart(2, '0')}>
+                                          {i.toString().padStart(2, '0')}분
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                {/* 유효성 검사 메시지 */}
+                                {tempDate && !isDateTimeValid(tempDate, tempTime) && (
+                                  <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                                    마감일시는 현재 시간으로부터 최소 1일 이후여야 합니다.
+                                  </div>
+                                )}
+
+                                {/* 확인 버튼 */}
+                                <Button 
+                                  onClick={confirmDateTime}
+                                  disabled={!isDateTimeValid(tempDate, tempTime)}
+                                  className={`w-full ${
+                                    isDateTimeValid(tempDate, tempTime) 
+                                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                  }`}
+                                  size="sm"
+                                >
+                                  날짜/시간 확인
+                                </Button>
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      {/* 시간 표시 (읽기 전용) */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-gray-600">선택된 시간</Label>
+                        <div className="h-12 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 flex items-center text-gray-600">
+                          <Clock className="mr-2 h-4 w-4" />
+                          {selectedDate ? (
+                            `${selectedTime.hour}:${selectedTime.minute}`
+                          ) : (
+                            "날짜를 먼저 선택하세요"
+                          )}
+                        </div>
+                      </div>
                     </div>
+
+                    {/* 빠른 날짜 선택 */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-gray-600">빠른 선택</Label>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const tomorrow = new Date()
+                            tomorrow.setDate(tomorrow.getDate() + 1)
+                            tomorrow.setHours(18, 0, 0, 0)
+                            
+                            if (isDateTimeValid(tomorrow, { hour: "18", minute: "00" })) {
+                              setSelectedDate(tomorrow)
+                              setSelectedTime({ hour: "18", minute: "00" })
+                            }
+                          }}
+                        >
+                          내일 오후 6시
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const nextWeek = new Date()
+                            nextWeek.setDate(nextWeek.getDate() + 7)
+                            nextWeek.setHours(18, 0, 0, 0)
+                            
+                            if (isDateTimeValid(nextWeek, { hour: "18", minute: "00" })) {
+                              setSelectedDate(nextWeek)
+                              setSelectedTime({ hour: "18", minute: "00" })
+                            }
+                          }}
+                        >
+                          일주일 후 오후 6시
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const nextMonth = new Date()
+                            nextMonth.setMonth(nextMonth.getMonth() + 1)
+                            nextMonth.setHours(18, 0, 0, 0)
+                            
+                            if (isDateTimeValid(nextMonth, { hour: "18", minute: "00" })) {
+                              setSelectedDate(nextMonth)
+                              setSelectedTime({ hour: "18", minute: "00" })
+                            }
+                          }}
+                        >
+                          한달 후 오후 6시
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* 선택된 날짜/시간 표시 */}
+                    {selectedDate && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="text-sm text-blue-800">
+                          <strong>마감일시:</strong> {format(selectedDate, "PPP", { locale: ko })} {selectedTime.hour}:{selectedTime.minute}
+                        </div>
+                      </div>
+                    )}
+                    
                     <p className="text-sm text-gray-500">공동구매 신청을 받을 마감 날짜와 시간을 설정하세요.</p>
                   </div>
 
