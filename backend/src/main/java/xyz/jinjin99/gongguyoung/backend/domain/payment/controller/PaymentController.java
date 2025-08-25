@@ -39,7 +39,6 @@ public class PaymentController {
     public ResponseEntity<?> getBNPLHistory(@RequestParam Long memberId){
 
 
-
         return null;
     }
 }
