@@ -19,6 +19,7 @@ import {
   Star,
   ArrowRight,
   Heart,
+  Trophy,
   Eye,
 } from "lucide-react";
 import { GroupPurchaseApi, type UICampaign } from "@/lib/group-purchase-api";
@@ -42,7 +43,38 @@ type LegacyCardModel = {
   endDate: string;
   viewCount: number;
 };
+function RankEmblem({ rank }: { rank: number }) {
+  const styles = [
+    {
+      bg: "from-yellow-300 to-amber-500",
+      ring: "ring-amber-300",
+      icon: "text-amber-800",
+    }, // 1위
+    {
+      bg: "from-gray-200 to-gray-400",
+      ring: "ring-gray-300",
+      icon: "text-gray-700",
+    }, // 2위
+    {
+      bg: "from-orange-300 to-amber-600",
+      ring: "ring-orange-300",
+      icon: "text-amber-900",
+    }, // 3위
+  ];
+  const s = styles[Math.min(rank - 1, 2)];
 
+  return (
+    <div
+      className={`relative inline-flex items-center justify-center w-10 h-10 rounded-full
+                  bg-gradient-to-br ${s.bg} ring-2 ${s.ring} shadow-md`}
+      aria-label={`${rank}위`}
+      title={`${rank}위`}
+    >
+      <Trophy className={`w-5 h-5 ${s.icon}`} />
+
+    </div>
+  );
+}
 function toLegacyCardModel(c: UICampaign): LegacyCardModel {
   // UICampaign.status -> legacy status
   const legacyStatus: LegacyCardModel["status"] =
@@ -51,7 +83,6 @@ function toLegacyCardModel(c: UICampaign): LegacyCardModel {
       : c.status === "COMPLETE"
       ? "completed"
       : "active";
-
   return {
     id: c.id,
     title: c.title,
@@ -154,7 +185,13 @@ export default function DashboardPage() {
       totalFunding,
     };
   }, [legacy]);
-
+  function getDiscountRate(targetQuantity: number): number {
+    if (targetQuantity >= 61) return 10;
+    if (targetQuantity >= 41) return 8;
+    if (targetQuantity >= 21) return 5;
+    if (targetQuantity >= 11) return 3;
+    return 0;
+  }
   // 인기/최신
   const trendingCampaigns = useMemo(
     () =>
@@ -299,12 +336,6 @@ export default function DashboardPage() {
                             HOT
                           </Badge>
                         </div>
-                        <Link
-                          to="/campaigns"
-                          className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center gap-1"
-                        >
-                          모두 보기 <ArrowRight className="h-4 w-4" />
-                        </Link>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -314,17 +345,7 @@ export default function DashboardPage() {
                           className="flex items-center gap-4 p-4 bg-purple-50/50 rounded-lg hover:bg-purple-100/50 transition-colors"
                         >
                           <div className="flex-shrink-0">
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                                index === 0
-                                  ? "bg-yellow-500"
-                                  : index === 1
-                                  ? "bg-purple-400"
-                                  : "bg-orange-400"
-                              }`}
-                            >
-                              {index + 1}
-                            </div>
+                            <RankEmblem rank={index + 1} />
                           </div>
                           <img
                             src={
@@ -341,19 +362,25 @@ export default function DashboardPage() {
                               <Users className="h-4 w-4" />
                               {campaign.participants}명 참여
                               <Eye className="h-3 w-3" />
-                              {Math.floor(Math.random() * 50) + 10}
+                              {campaign.viewCount}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-purple-700">
-                              {campaign.discountPrice.toLocaleString()}원
+                              {(
+                                campaign.discountPrice *
+                                (100 -
+                                  getDiscountRate(campaign.targetQuantity)) *
+                                0.01
+                              ).toLocaleString()}
+                              원
                             </p>
                             <Badge
                               variant="destructive"
                               className="text-xs bg-pink-500"
                             >
                               {/* 임시 할인율: 원가 동일 시 0% */}
-                              0% 할인
+                              {getDiscountRate(campaign.targetQuantity)}% 할인
                             </Badge>
                           </div>
                         </div>
