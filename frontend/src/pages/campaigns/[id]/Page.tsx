@@ -1,122 +1,215 @@
-
-
-import { useState, useEffect } from "react"
-import {  useRouter } from '@/compat/navigation'
-import { AuthGuard } from "@/components/auth/auth-guard"
-import { useAuth } from "@/lib/auth-context"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { BNPLSelector } from "@/components/payment/bnpl-selector"
-import { BNPLApplication } from "@/components/payment/bnpl-application"
-import { PaymentProgress } from "@/components/payment/payment-progress"
-import { mockCampaigns } from "@/lib/mock-data"
-import { calculateMonthlyPayment, type BNPLPlan } from "@/lib/bnpl-utils"
-import { ArrowLeft, Users, Calendar, TrendingDown, Edit, Trash2, MoreVertical } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useParams,Link } from 'react-router-dom'
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "@/compat/navigation";
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { BNPLSelector } from "@/components/payment/bnpl-selector";
+import { BNPLApplication } from "@/components/payment/bnpl-application";
+import { PaymentProgress } from "@/components/payment/payment-progress";
+import { calculateMonthlyPayment, type BNPLPlan } from "@/lib/bnpl-utils";
+import {
+  ArrowLeft,
+  Users,
+  Calendar,
+  TrendingDown,
+  Edit,
+  Trash2,
+  MoreVertical,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useParams, Link } from "react-router-dom";
+import { GroupPurchaseApi, type UICampaign } from "@/lib/group-purchase-api";
 
 export default function CampaignDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const { user } = useAuth()
-  const [quantity, setQuantity] = useState(1)
-  const [isJoining, setIsJoining] = useState(false)
-  const [showPayment, setShowPayment] = useState(false)
-  const [selectedBNPLPlan, setSelectedBNPLPlan] = useState<BNPLPlan | null>(null)
-  const [showBNPLApplication, setShowBNPLApplication] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [paymentStep, setPaymentStep] = useState(1)
+  const params = useParams();
+  const router = useRouter();
+  const { user } = useAuth();
 
-  useEffect(() => {
-    if (params.id === "create") {
-      router.replace("/create-campaign")
-      return
-    }
-  }, [params.id, router])
+  const [campaign, setCampaign] = useState<UICampaign | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  if (params.id === "create") {
-    return null
+  const [quantity, setQuantity] = useState(1);
+  const [showPayment, setShowPayment] = useState(false);
+  const [selectedBNPLPlan, setSelectedBNPLPlan] = useState<BNPLPlan | null>(null);
+  const [showBNPLApplication, setShowBNPLApplication] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [paymentStep, setPaymentStep] = useState(1);
+
+  // StrictMode 중복 호출 가드
+  const fetchedForIdRef = useRef<string | null>(null);
+
+  // 할인율 정책
+  function getDiscountRate(targetQuantity: number): number {
+    if (targetQuantity >= 61) return 10;
+    if (targetQuantity >= 41) return 8;
+    if (targetQuantity >= 21) return 5;
+    if (targetQuantity >= 11) return 3;
+    return 0;
   }
 
-  const campaign = mockCampaigns.find((c) => c.id === params.id)
+  // "create" 경로 리다이렉트
+  useEffect(() => {
+    if (params.id === "create") {
+      router.replace("/create-campaign");
+      setLoading(false);
+    }
+  }, [params.id, router]);
 
-  if (!campaign) {
+  // 마운트 시 상세 API 호출
+  useEffect(() => {
+    const id = params.id;
+    if (!id || id === "create") {
+      setLoading(false);
+      return;
+    }
+
+    // StrictMode에서 같은 id로 두 번 불리지 않도록 가드
+    if (fetchedForIdRef.current === id && campaign) return;
+    fetchedForIdRef.current = id;
+
+    let canceled = false;
+    setLoading(true);
+    setErrorMsg(null);
+
+    (async () => {
+      try {
+        // 그룹구매 상세 호출
+        const data = await GroupPurchaseApi.getGroupPurchaseById(id);
+        if (canceled) return;
+
+        if (!data) {
+          setCampaign(null);
+          setErrorMsg("해당 공구를 불러올 수 없습니다.");
+        } else {
+          setCampaign(data);
+        }
+      } catch (e) {
+        if (!canceled) {
+          setCampaign(null);
+          setErrorMsg("네트워크 오류가 발생했습니다.");
+        }
+      } finally {
+        if (!canceled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      canceled = true;
+    };
+  }, [params.id]); // router, campaign 의존성 제외
+
+  if (params.id === "create") return null;
+
+  if (loading) {
+    return (
+      <AuthGuard>
+        <div className="min-h-screen flex items-center justify-center">
+          <p>불러오는 중...</p>
+        </div>
+      </AuthGuard>
+    );
+  }
+
+  if (errorMsg || !campaign) {
     return (
       <AuthGuard>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">공구를 찾을 수 없습니다</h1>
+            <h1 className="text-2xl font-bold mb-2">공구를 찾을 수 없습니다</h1>
+            {errorMsg && <p className="text-gray-500 mb-4">{errorMsg}</p>}
             <Link to="/dashboard">
               <Button>대시보드로 돌아가기</Button>
             </Link>
           </div>
         </div>
       </AuthGuard>
-    )
+    );
   }
 
-  const progressPercentage = (campaign.currentQuantity / campaign.targetQuantity) * 100
+  // 백엔드 모델에 createdBy가 없으므로 판단 불가
+  const isOwner = false;
+
+  const progressPercentage =
+    campaign.targetQuantity > 0
+      ? (campaign.currentQuantity / campaign.targetQuantity) * 100
+      : 0;
+
   const discountPercentage = Math.round(
-    ((campaign.product.originalPrice - campaign.discountPrice) / campaign.product.originalPrice) * 100,
-  )
-  const daysLeft = Math.ceil((new Date(campaign.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    ((campaign.product.originalPrice - campaign.discountPrice) /
+      (campaign.product.originalPrice || 1)) *
+      100
+  );
 
-  const originalTotalPrice = campaign.product.originalPrice * quantity
-  const discountTotalPrice = campaign.discountPrice * quantity
-  const totalDiscountAmount = originalTotalPrice - discountTotalPrice
-  const finalPrice = discountTotalPrice
-
-  const isOwner = user?.email === campaign.createdBy || user?.name === campaign.createdBy
+  const daysLeft = Math.ceil(
+    (new Date(campaign.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  );
+ // campaign.product.originalPrice * quantity * getDiscountRate(campaign.targetQuantity) *0.01
+  const originalTotalPrice = campaign.product.originalPrice * quantity;
+  const discountTotalPrice = campaign.product.originalPrice * quantity * (100-getDiscountRate(campaign.targetQuantity)) *0.01;
+  const totalDiscountAmount = originalTotalPrice - discountTotalPrice;
+  const finalPrice = discountTotalPrice;
 
   const handleJoinCampaign = () => {
-    setShowPayment(true)
-    setPaymentStep(1)
-  }
+    setShowPayment(true);
+    setPaymentStep(1);
+  };
 
   const handlePaymentProceed = () => {
     if (selectedBNPLPlan) {
-      setShowBNPLApplication(true)
-      setPaymentStep(2)
+      setShowBNPLApplication(true);
+      setPaymentStep(2);
     } else {
-      // Handle regular payment
-      setIsJoining(true)
-      setPaymentStep(2)
+      setPaymentStep(2);
       setTimeout(() => {
-        router.push(`/payment/success?orderId=ORDER-${Date.now()}&method=full`)
-      }, 1000)
+        router.push(`/payment/success?orderId=ORDER-${Date.now()}&method=full`);
+      }, 600);
     }
-  }
+  };
 
-  const handleBNPLSubmit = (applicationData: any) => {
-    setPaymentStep(3)
+  const handleBNPLSubmit = () => {
+    setPaymentStep(3);
     setTimeout(() => {
-      router.push(`/payment/success?orderId=ORDER-${Date.now()}&method=bnpl`)
-    }, 1000)
-  }
+      router.push(`/payment/success?orderId=ORDER-${Date.now()}&method=bnpl`);
+    }, 600);
+  };
 
   const handleDeleteCampaign = () => {
-    if (window.confirm("정말로 이 공구를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
-      setIsDeleting(true)
-      // Mock API call
+    if (
+      window.confirm(
+        "정말로 이 공구를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+      )
+    ) {
+      setIsDeleting(true);
+      // TODO: 삭제 API 연동
       setTimeout(() => {
-        alert("공구가 성공적으로 삭제되었습니다.")
-        router.push("/dashboard")
-      }, 1000)
+        alert("공구가 성공적으로 삭제되었습니다.");
+        router.push("/dashboard");
+      }, 700);
     }
-  }
+  };
+
+  // 상태 해석: UI 타입은 WAITING | COMPLETE | CANCELLED
+  const isExpiredButAchieved =
+    daysLeft <= 0 && campaign.currentQuantity >= campaign.targetQuantity;
 
   const isPaymentAvailable =
-    campaign.status === "active" || (daysLeft <= 0 && campaign.currentQuantity >= campaign.targetQuantity)
-  const isExpiredButAchieved = daysLeft <= 0 && campaign.currentQuantity >= campaign.targetQuantity
+    campaign.status === "WAITING" || isExpiredButAchieved;
 
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        {/* Hero Section with Product Image and Key Info */}
+        {/* Hero Section */}
         <div className="bg-white shadow-sm">
           <div className="container mx-auto px-4 py-6">
             <div className="flex justify-between items-center mb-4">
@@ -177,36 +270,49 @@ export default function CampaignDetailPage() {
               <div className="md:col-span-2 space-y-4">
                 <div className="flex flex-wrap gap-2 mb-3">
                   <Badge
-                    variant={campaign.status === "active" ? "default" : "secondary"}
+                    variant={campaign.status === "WAITING" ? "default" : "secondary"}
                     className="bg-hey-gradient text-white"
                   >
-                    {campaign.status === "active" ? "진행중" : isExpiredButAchieved ? "마감완료" : "완료"}
+                    {campaign.status === "WAITING"
+                      ? "진행중"
+                      : isExpiredButAchieved
+                      ? "마감완료"
+                      : "완료"}
                   </Badge>
-                  {isOwner && (
-                    <Badge variant="outline" className="border-green-200 text-green-700 bg-green-50">
-                      내가 만든 공구
-                    </Badge>
-                  )}
                 </div>
 
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{campaign.title}</h1>
-                <h2 className="text-xl text-gray-600 mb-4">{campaign.product.name}</h2>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  {campaign.title}
+                </h1>
+                <h2 className="text-xl text-gray-600 mb-4">
+                  {campaign.product.name}
+                </h2>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl">
-                    <div className="text-2xl font-bold text-blue-600">{discountPercentage}%</div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {isNaN(discountPercentage) ? 0 : discountPercentage}%
+                    </div>
                     <div className="text-sm text-blue-700">할인율</div>
                   </div>
                   <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl">
-                    <div className="text-2xl font-bold text-green-600">{campaign.currentQuantity}</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {campaign.currentQuantity}
+                    </div>
                     <div className="text-sm text-green-700">참여자</div>
                   </div>
                   <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl">
-                    <div className="text-2xl font-bold text-orange-600">{daysLeft <= 0 ? "마감" : daysLeft}</div>
-                    <div className="text-sm text-orange-700">{daysLeft <= 0 ? "상태" : "남은 일수"}</div>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {daysLeft <= 0 ? "마감" : daysLeft}
+                    </div>
+                    <div className="text-sm text-orange-700">
+                      {daysLeft <= 0 ? "상태" : "남은 일수"}
+                    </div>
                   </div>
                   <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl">
-                    <div className="text-2xl font-bold text-purple-600">{Math.round(progressPercentage)}%</div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {Math.round(progressPercentage)}%
+                    </div>
                     <div className="text-sm text-purple-700">달성률</div>
                   </div>
                 </div>
@@ -217,9 +323,8 @@ export default function CampaignDetailPage() {
 
         <div className="container mx-auto px-4 py-8">
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Reorganized Left Column with Progress and Description */}
+            {/* Left */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Progress Card with Enhanced Visual Design */}
               <Card className="border-0 shadow-lg bg-gradient-to-r from-white to-gray-50">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-xl">
@@ -234,7 +339,7 @@ export default function CampaignDetailPage() {
                     <div className="text-3xl font-bold text-gray-900">
                       {campaign.currentQuantity} / {campaign.targetQuantity}
                     </div>
-                    <div className="text-gray-600">명 참여</div>
+                    <div className="text-gray-600">개 구매</div>
                   </div>
 
                   <div className="relative">
@@ -248,13 +353,13 @@ export default function CampaignDetailPage() {
                   <div className="flex justify-between items-center p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
                     <div className="text-center">
                       <div className="text-lg font-semibold text-gray-900">
-                        {campaign.targetQuantity - campaign.currentQuantity}명
+                        {Math.max(0, campaign.targetQuantity - campaign.currentQuantity)}개
                       </div>
-                      <div className="text-sm text-gray-600">더 필요</div>
+                      <div className="text-sm text-gray-600">필요</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-semibold text-green-600">
-                        {(campaign.product.originalPrice - campaign.discountPrice).toLocaleString()}원
+                        {(campaign.product.originalPrice * getDiscountRate(campaign.targetQuantity) *0.01).toLocaleString()}원
                       </div>
                       <div className="text-sm text-gray-600">개당 절약</div>
                     </div>
@@ -262,17 +367,18 @@ export default function CampaignDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Product Description */}
               <Card className="border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle>상품 정보</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-700 leading-relaxed mb-4">{campaign.description}</p>
+                  <p className="text-gray-700 leading-relaxed mb-4">
+                    {campaign.description}
+                  </p>
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4" />
-                      <span>개설자: {campaign.createdBy}</span>
+                      <span>참여자 수: {campaign.currentQuantity}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
@@ -283,16 +389,18 @@ export default function CampaignDetailPage() {
               </Card>
             </div>
 
-            {/* Enhanced Right Sidebar with Sticky Positioning */}
+            {/* Right */}
             <div className="lg:col-span-1">
               <div className="sticky top-8 space-y-6">
                 {showPayment && (
-                  <PaymentProgress currentStep={paymentStep} paymentMethod={selectedBNPLPlan ? "bnpl" : "full"} />
+                  <PaymentProgress
+                    currentStep={paymentStep}
+                    paymentMethod={selectedBNPLPlan ? "bnpl" : "full"}
+                  />
                 )}
 
                 {!showPayment ? (
                   <>
-                    {/* Enhanced Price Card */}
                     <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-purple-50 to-pink-50">
                       <CardHeader className="text-center pb-4">
                         <div className="inline-flex items-center gap-2 bg-hey-gradient text-white px-4 py-2 rounded-full text-sm font-medium">
@@ -306,10 +414,10 @@ export default function CampaignDetailPage() {
                             정가 {campaign.product.originalPrice.toLocaleString()}원
                           </div>
                           <div className="text-3xl font-bold text-purple-600">
-                            {campaign.discountPrice.toLocaleString()}원
+                            {discountTotalPrice.toLocaleString()}원
                           </div>
                           <Badge variant="destructive" className="bg-red-500">
-                            {discountPercentage}% 할인
+                            {getDiscountRate(campaign.targetQuantity)}% 할인
                           </Badge>
                         </div>
 
@@ -323,7 +431,7 @@ export default function CampaignDetailPage() {
                               </div>
                             )}
 
-                            {campaign.status === "active" && (
+                            {campaign.status === "WAITING" && (
                               <div className="space-y-2">
                                 <Label htmlFor="quantity" className="text-sm font-medium">
                                   수량 선택
@@ -343,7 +451,9 @@ export default function CampaignDetailPage() {
                                     min="1"
                                     max="5"
                                     value={quantity}
-                                    onChange={(e) => setQuantity(Math.max(1, Number.parseInt(e.target.value) || 1))}
+                                    onChange={(e) =>
+                                      setQuantity(Math.max(1, Number.parseInt(e.target.value) || 1))
+                                    }
                                     className="text-center"
                                   />
                                   <Button
@@ -374,7 +484,7 @@ export default function CampaignDetailPage() {
                               </div>
                               <div className="border-t pt-2">
                                 <div className="flex justify-between items-center">
-                                  <span className="font-bold text-lg">총 결제금액</span>
+                                  <span className="font-bold text-lg">총 금액</span>
                                   <span className="text-2xl font-bold text-purple-600">
                                     {finalPrice.toLocaleString()}원
                                   </span>
@@ -398,12 +508,16 @@ export default function CampaignDetailPage() {
                           </div>
                         )}
 
-                        {!isPaymentAvailable && daysLeft <= 0 && campaign.currentQuantity < campaign.targetQuantity && (
-                          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                            <p className="text-red-700 font-medium">공구가 마감되었습니다</p>
-                            <p className="text-sm text-red-600 mt-1">최소인원 미달로 결제할 수 없습니다</p>
-                          </div>
-                        )}
+                        {!isPaymentAvailable &&
+                          daysLeft <= 0 &&
+                          campaign.currentQuantity < campaign.targetQuantity && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                              <p className="text-red-700 font-medium">공구가 마감되었습니다</p>
+                              <p className="text-sm text-red-600 mt-1">
+                                최소인원 미달로 결제할 수 없습니다
+                              </p>
+                            </div>
+                          )}
                       </CardContent>
                     </Card>
                   </>
@@ -421,8 +535,8 @@ export default function CampaignDetailPage() {
                       monthlyPayment={calculateMonthlyPayment(finalPrice, selectedBNPLPlan)}
                       onSubmit={handleBNPLSubmit}
                       onCancel={() => {
-                        setShowBNPLApplication(false)
-                        setPaymentStep(1)
+                        setShowBNPLApplication(false);
+                        setPaymentStep(1);
                       }}
                     />
                   )
@@ -433,5 +547,5 @@ export default function CampaignDetailPage() {
         </div>
       </div>
     </AuthGuard>
-  )
+  );
 }
