@@ -40,7 +40,6 @@ public class PaymentService {
      *      3-1 BNPL 일때 BNPL로 결제
      *      3-2 일반 결제일때 일반결제 얼마
      *      그 후 저장
-     *
      *      TODO 결제 에는 출금계좌, 입금계좌
      *          두개가 존재함 ->
      *
@@ -68,7 +67,6 @@ public class PaymentService {
                 immediateTxNo = handleImmediate(paymentRequest, accountNos, groupPurchaseAccountNo);
             }
             case "BNPL" -> {
-
                 PaymentProcessingResult paymentProcessingResult = handleBnpl(paymentRequest, accountNos, groupPurchaseAccountNo);
                 bnplTxNo = paymentProcessingResult.getBnplTransactionNo();
                 immediateTxNo = paymentProcessingResult.getImmediateTransactionNo();
@@ -80,7 +78,7 @@ public class PaymentService {
         PaymentEvent paymentEvent = PaymentEvent.builder()
                 .member(member)
                 .groupPurchase(groupPurchase)
-                .type(PaymentType.valueOf(paymentRequest.getPaymentType())) // GENERAL / BNPL_ONLY / SPLIT
+                .type(PaymentType.valueOf(paymentRequest.getPaymentType())) // IMMEDIATE_ONLY, BNPL
                 .status(PaymentStatus.PAID)              // @Builder는 기본값 유지 안 됨: 명시!
                 .bnplStatus(BnplStatus.PROCESSING)                        // TODO: 팀 정의 상태에 맞게 설정
                 .immediateAmount(paymentRequest.getImmediate())
@@ -97,7 +95,7 @@ public class PaymentService {
 
 
     @Transactional
-    public PaymentCancellationResult refundParticipation(PaymentCancellationRequest request) {
+    public PaymentCancellationResult refundPayment(PaymentCancellationRequest request) {
         // 0) 결제 이벤트 로드 + 소유자 검증
         PaymentEvent event = paymentRepository.findById(request.getPaymentEventId())
                 .orElseThrow(() -> new IllegalArgumentException("결제 이벤트가 없습니다. id=" + request.getPaymentEventId()));
