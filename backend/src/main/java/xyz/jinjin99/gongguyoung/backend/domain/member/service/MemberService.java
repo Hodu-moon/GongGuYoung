@@ -12,6 +12,7 @@ import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.common.MemberRecord;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.BaseRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.CreateDemandDepositAccountRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.InquireDemandDepositAccountListRequest;
+import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.UpdateDemandDepositAccountDepositRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.CreateDemandDepositAccountResponse;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.InquireDemandDepositAccountListResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.request.SignupRequest;
@@ -61,8 +62,6 @@ public class MemberService {
         log.info("searchMember is null : {}", Objects.isNull(memberRecord));
         String starterAccountNo = null, bnplAccountNo = null, userKey = null ;
 
-
-
         String apiKey = managerClient.getOrCreateApiKey();
         // 2. 이메일로 서버에 회원이 존재하는지 확인
         if(Objects.isNull(memberRecord)){
@@ -94,6 +93,23 @@ public class MemberService {
 
             bnplAccountNo = demandDepositAccount1.getRecord().getAccountNo();
 
+            // BNPL 계좌에 10만원 추가
+            // 일반 계좌에 5만원 추가
+            demandDepositClient.updateDemandDepositAccountDeposit(
+                    UpdateDemandDepositAccountDepositRequest.builder()
+                            .accountNo(bnplAccountNo)
+                            .transactionBalance(100000L)
+                            .transactionSummary("회원가입")
+                            .build()
+            );
+
+            demandDepositClient.updateDemandDepositAccountDeposit(
+                    UpdateDemandDepositAccountDepositRequest.builder()
+                            .accountNo(starterAccountNo)
+                            .transactionBalance(50000L)
+                            .transactionSummary("회원가입")
+                            .build()
+            );
 
         }else{ // 회원이 존재하면
             userKey = memberRecord.getUserKey();

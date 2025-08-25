@@ -64,4 +64,21 @@ public interface DemandDepositClient {
    * @return
    */
   InquireTransactionHistoryResponse inquireTransactionHistory(InquireTransactionHistoryRequest request);
+
+
+  /**
+   * 계좌 입금
+   *
+   * @Author 문영호
+   */
+  UpdateDemandDepositAccountDepositResponse updateDemandDepositAccountDeposit(UpdateDemandDepositAccountDepositRequest request);
+
+
+  /**
+   * 계좌 잔액 조회
+   *
+   */
+
+  InquireDemandDepositAccountBalanceResponse inquireDemandDepositAccountBalance(InquireDemandDepositAccountBalanceRequest request);
+
 }

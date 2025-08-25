@@ -62,4 +62,16 @@ public class DemandDepositClientImpl implements DemandDepositClient {
     return finOpenHttpClient.post(endPoint, request, InquireTransactionHistoryResponse.class);
   }
 
+  @Override
+  public UpdateDemandDepositAccountDepositResponse updateDemandDepositAccountDeposit(UpdateDemandDepositAccountDepositRequest request) {
+    String endPoint = "/edu/demandDeposit/updateDemandDepositAccountDeposit";
+    return finOpenHttpClient.post(endPoint, request, UpdateDemandDepositAccountDepositResponse.class);
+  }
+
+  @Override
+  public InquireDemandDepositAccountBalanceResponse inquireDemandDepositAccountBalance(InquireDemandDepositAccountBalanceRequest request) {
+    String endPoint = "/edu/demandDeposit/inquireDemandDepositAccountBalance";
+    return finOpenHttpClient.post(endPoint, request, InquireDemandDepositAccountBalanceResponse.class);
+  }
+
 }
