@@ -2,6 +2,9 @@ package xyz.jinjin99.gongguyoung.backend.domain.member.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -22,13 +25,15 @@ import java.util.Base64;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1")
+@Tag(name="인증", description = "인증 관련 API")
 public class AuthController {
 
     private final MemberService memberService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req) throws JsonProcessingException {
+    @Operation(summary = "로그인", description = "로그인 기능입니다.")
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) throws JsonProcessingException {
         // 1) 검증 (예: 이메일/패스워드 확인)
         Member member = memberService.authenticate(req.getEmail(), req.getPassword());
 
@@ -52,6 +57,7 @@ public class AuthController {
                 .body("로그인 성공");
     }
     @PostMapping("/logout")
+    @Operation(summary = "로그아웃", description = "로그아웃 기능입니다.")
     public ResponseEntity<?> logout() {
         // 같은 이름/경로로 MaxAge=0 쿠키 내려서 삭제
         ResponseCookie expired = ResponseCookie.from("member", "")
