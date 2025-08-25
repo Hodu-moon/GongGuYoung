@@ -12,6 +12,8 @@ import { BNPLSelector } from "@/components/payment/bnpl-selector";
 import { BNPLApplication } from "@/components/payment/bnpl-application";
 import { PaymentProgress } from "@/components/payment/payment-progress";
 import { calculateMonthlyPayment, type BNPLPlan } from "@/lib/bnpl-utils";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import Image from "@/compat/NextImage";
 import {
   ArrowLeft,
   Users,
@@ -20,6 +22,8 @@ import {
   Edit,
   Trash2,
   MoreVertical,
+  User,
+  Plus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,7 +37,7 @@ import { GroupPurchaseApi, type UICampaign } from "@/lib/group-purchase-api";
 export default function CampaignDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const [campaign, setCampaign] = useState<UICampaign | null>(null);
   const [loading, setLoading] = useState(true);
@@ -209,6 +213,59 @@ export default function CampaignDetailPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        {/* Header */}
+        <header className="bg-hey-gradient text-white">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex justify-between items-center">
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+              >
+                <Image
+                  src="/hey-young-logo.png"
+                  alt="Hey Young Smart Campus"
+                  width={36}
+                  height={36}
+                  className="rounded-lg"
+                />
+                <div>
+                  <h1 className="text-lg font-bold text-white">Hey Young</h1>
+                  <p className="text-xs text-white/80">Smart Campus</p>
+                </div>
+              </Link>
+              <div className="flex gap-1">
+                <NotificationBell />
+                <Link to="/my-page">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/20 p-2"
+                  >
+                    <User className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link to="/create-campaign">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/20 p-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20 p-2"
+                  onClick={logout}
+                >
+                  로그아웃
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
         {/* Hero Section */}
         <div className="bg-white shadow-sm">
           <div className="container mx-auto px-4 py-6">
