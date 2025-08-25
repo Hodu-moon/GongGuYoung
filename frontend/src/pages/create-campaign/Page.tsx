@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from '@/compat/navigation'
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { Button } from "@/components/ui/button"
@@ -10,15 +10,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, ShoppingBag, Calendar, Target, DollarSign, Image as ImageIcon, FileText, Sparkles, Check } from "lucide-react"
+import { ArrowLeft, ShoppingBag, Calendar, Target, DollarSign, Image as ImageIcon, FileText, Sparkles, Check, Loader2, Search, X } from "lucide-react"
 import { Link } from 'react-router-dom'
-
-// Mock products data (실제로는 백엔드 API에서 가져와야 함)
-const mockProducts = [
-  { id: 1, name: "생화학 교재", price: 45000, imageUrl: "/biology-textbook.png", description: "최신 생화학 이론과 실습을 위한 필수 교재" },
-  { id: 2, name: "아이패드 (10세대)", price: 569000, imageUrl: "/ipad-tablet.png", description: "학습과 노트 필기를 위한 최적의 태블릿" },
-  { id: 3, name: "간호학과 실습복", price: 89000, imageUrl: "/nursing-uniform.png", description: "고품질 간호학과 전용 실습복 세트" },
-]
+import axios from 'axios'
 
 export default function CreateCampaignPage() {
   const router = useRouter()
@@ -33,6 +27,19 @@ export default function CreateCampaignPage() {
     targetCount: "",
     discountedPrice: "",
   })
+  
+  // 상품 관련 상태
+  const [products, setProducts] = useState<any[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [hasMoreProducts, setHasMoreProducts] = useState(true)
+  const [displayedProducts, setDisplayedProducts] = useState<any[]>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const observerRef = useRef<HTMLDivElement>(null)
+  
+  // 검색 관련 상태
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
   const steps = [
     { number: 1, title: "상품 선택", icon: ShoppingBag, description: "공동구매할 상품을 선택하세요" },
@@ -40,6 +47,101 @@ export default function CreateCampaignPage() {
     { number: 3, title: "상세 정보", icon: FileText, description: "제목과 설명을 작성하세요" },
     { number: 4, title: "마감 설정", icon: Calendar, description: "마감일을 설정하고 등록하세요" },
   ]
+
+  // 전체 상품 목록 가져오기 함수
+  const fetchAllProducts = useCallback(async () => {
+    try {
+      console.log('Fetching all products')
+      const response = await axios.get('/api/v1/products')
+      setProducts(response.data)
+      return response.data
+    } catch (error) {
+      console.error('Error fetching products:', error)
+      setProducts([])
+      return []
+    }
+  }, [])
+
+  // 검색 함수
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query)
+    
+    if (query.trim() === "") {
+      // 검색어가 없으면 전체 상품에서 처음 6개 표시
+      setIsSearching(false)
+      setFilteredProducts([])
+      setDisplayedProducts(products.slice(0, 6))
+      setCurrentIndex(6)
+      setHasMoreProducts(products.length > 6)
+    } else {
+      // 검색어가 있으면 필터링된 상품들 표시
+      setIsSearching(true)
+      const filtered = products.filter(product => 
+        product.name.toLowerCase().includes(query.toLowerCase()) ||
+        product.description.toLowerCase().includes(query.toLowerCase())
+      )
+      setFilteredProducts(filtered)
+      setDisplayedProducts(filtered.slice(0, 6))
+      setCurrentIndex(6)
+      setHasMoreProducts(filtered.length > 6)
+    }
+  }, [products])
+
+  // 표시할 상품을 더 로드하는 함수
+  const loadMoreDisplayedProducts = useCallback((loadCount = 6) => {
+    if (loadingProducts || !hasMoreProducts) return
+
+    setLoadingProducts(true)
+    
+    const sourceProducts = isSearching ? filteredProducts : products
+    const nextIndex = currentIndex + loadCount
+    const newDisplayedProducts = sourceProducts.slice(currentIndex, nextIndex)
+    
+    setDisplayedProducts(prev => [...prev, ...newDisplayedProducts])
+    setCurrentIndex(nextIndex)
+    
+    // 더 이상 로드할 상품이 없으면 hasMoreProducts를 false로 설정
+    if (nextIndex >= sourceProducts.length) {
+      setHasMoreProducts(false)
+    }
+    
+    setLoadingProducts(false)
+  }, [currentIndex, loadingProducts, hasMoreProducts, products, filteredProducts, isSearching])
+
+  // 초기 로드
+  useEffect(() => {
+    const initializeProducts = async () => {
+      const allProducts = await fetchAllProducts()
+      if (allProducts.length > 0) {
+        // 초기에 6개만 표시
+        setDisplayedProducts(allProducts.slice(0, 6))
+        setCurrentIndex(6)
+        setHasMoreProducts(allProducts.length > 6)
+      }
+    }
+    
+    initializeProducts()
+  }, [fetchAllProducts])
+
+  // 무한 스크롤 옵저버
+  useEffect(() => {
+    if (!observerRef.current) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMoreProducts && !loadingProducts) {
+          loadMoreDisplayedProducts(6)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(observerRef.current)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [loadMoreDisplayedProducts, hasMoreProducts, loadingProducts])
 
   const handleSubmit = async () => {
     if (currentStep < 4) {
@@ -77,11 +179,19 @@ export default function CreateCampaignPage() {
   }
 
   const handleProductSelect = (productId: number) => {
-    const product = mockProducts.find(p => p.id === productId)
+    // displayedProducts와 전체 products 모두에서 검색
+    const product = displayedProducts.find(p => p.id === productId) || 
+                   products.find(p => p.id === productId)
     if (product) {
       setSelectedProduct(product)
       setFormData(prev => ({ ...prev, productId: productId.toString() }))
     }
+  }
+
+  // 검색창 초기화 함수
+  const clearSearch = () => {
+    setSearchQuery("")
+    handleSearch("")
   }
 
   const canProceedToNextStep = () => {
@@ -186,9 +296,35 @@ export default function CreateCampaignPage() {
               {/* Step 1: 상품 선택 */}
               {currentStep === 1 && (
                 <div className="space-y-6">
-                  
+                  {/* 검색창 */}
+                  <div className="relative max-w-md mx-auto mb-6">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        type="text"
+                        placeholder="상품명으로 검색... (예: 애플 에어팟)"
+                        value={searchQuery}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        className="pl-10 pr-10 h-12 text-base border-2 focus:border-purple-600 rounded-xl"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={clearSearch}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                        >
+                          <X className="w-4 h-4 text-gray-400" />
+                        </button>
+                      )}
+                    </div>
+                    {isSearching && (
+                      <div className="mt-2 text-sm text-gray-600 text-center">
+                        "{searchQuery}" 검색 결과: {filteredProducts.length}개
+                      </div>
+                    )}
+                  </div>
+
                   <div className="grid md:grid-cols-3 gap-4">
-                    {mockProducts.map((product) => (
+                    {displayedProducts.map((product) => (
                       <div
                         key={product.id}
                         onClick={() => handleProductSelect(product.id)}
@@ -226,6 +362,47 @@ export default function CreateCampaignPage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* 로딩 인디케이터 */}
+                  {loadingProducts && (
+                    <div className="flex justify-center items-center py-8">
+                      <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                      <span className="ml-2 text-gray-600">상품을 불러오는 중...</span>
+                    </div>
+                  )}
+
+                  {/* 무한 스크롤 트리거 */}
+                  <div ref={observerRef} className="h-4" />
+
+                  {/* 더 이상 상품이 없을 때 */}
+                  {!hasMoreProducts && displayedProducts.length > 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      {isSearching 
+                        ? `"${searchQuery}" 검색 결과를 모두 불러왔습니다. (총 ${displayedProducts.length}개)`
+                        : `모든 상품을 불러왔습니다. (총 ${displayedProducts.length}개)`
+                      }
+                    </div>
+                  )}
+
+                  {/* 상품이 하나도 없을 때 */}
+                  {!loadingProducts && displayedProducts.length === 0 && (
+                    <div className="text-center py-12">
+                      <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      {isSearching ? (
+                        <div>
+                          <p className="text-gray-500 mb-2">"{searchQuery}"에 대한 검색 결과가 없습니다.</p>
+                          <button
+                            onClick={clearSearch}
+                            className="text-purple-600 hover:text-purple-700 underline text-sm"
+                          >
+                            전체 상품 보기
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">상품을 불러올 수 없습니다.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
