@@ -50,4 +50,20 @@ public class GlobalExceptionHandler {
                 .body(errorResponse);
     }
 
+    @ExceptionHandler(MemberCreationException.class)
+    public ResponseEntity<ErrorResponse> handleMemberCreationException(MemberCreationException exception) {
+        log.error("Member creation failed", exception);
+        ErrorResponse errorResponse = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "FinOpen 회원 생성에 실패했습니다");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(errorResponse);
+    }
+
+    @ExceptionHandler(AccountCreationException.class)
+    public ResponseEntity<ErrorResponse> handleAccountCreationException(AccountCreationException exception) {
+        log.error("Account creation failed", exception);
+        ErrorResponse errorResponse = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "FinOpen 계좌 생성에 실패했습니다");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(errorResponse);
+    }
+
 }
