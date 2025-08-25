@@ -11,6 +11,7 @@ import xyz.jinjin99.gongguyoung.backend.client.finopen.client.DemandDepositClien
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.UpdateDemandDepositAccountTransferRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.UpdateDemandDepositAccountTransferResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.entity.GroupPurchase;
+import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.repository.GroupPurchaseRepository;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.MemberAccountsNo;
 import xyz.jinjin99.gongguyoung.backend.domain.member.entity.Member;
 import xyz.jinjin99.gongguyoung.backend.domain.member.service.MemberService;
@@ -36,6 +37,8 @@ class PaymentServiceTest {
     @Mock private MemberService memberService;
     @Mock private DemandDepositClient demandDepositClient;
     @Mock private PaymentRepository paymentRepository;
+
+    @Mock private GroupPurchaseRepository groupPurchaseRepository;
 
     // 공통 목업
     @Mock private Member mockMember;
@@ -106,6 +109,9 @@ class PaymentServiceTest {
         ArgumentCaptor<PaymentEvent> eventCaptor = ArgumentCaptor.forClass(PaymentEvent.class);
         when(paymentRepository.save(eventCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
 
+
+        when(groupPurchaseRepository.findById(any())).thenReturn(Optional.of(mockGroupPurchase));
+
         // when
         paymentService.processPayment(req);
 
@@ -126,6 +132,8 @@ class PaymentServiceTest {
         int immediate = 0;
         int bnpl = 50_000;
 
+
+
         PaymentRequest req = mock(PaymentRequest.class);
         when(req.getMemberId()).thenReturn(memberId);
         when(req.getPaymentType()).thenReturn("BNPL"); // 현재 코드에 맞춤 (switch가 BNPL로 분기)
@@ -144,6 +152,8 @@ class PaymentServiceTest {
 
         ArgumentCaptor<PaymentEvent> eventCaptor = ArgumentCaptor.forClass(PaymentEvent.class);
         when(paymentRepository.save(eventCaptor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        when(groupPurchaseRepository.findById(any())).thenReturn(Optional.of(mockGroupPurchase));
 
         // when
         paymentService.processPayment(req);

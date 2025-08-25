@@ -8,6 +8,7 @@ import xyz.jinjin99.gongguyoung.backend.client.finopen.client.DemandDepositClien
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.UpdateDemandDepositAccountTransferRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.UpdateDemandDepositAccountTransferResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.entity.GroupPurchase;
+import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.repository.GroupPurchaseRepository;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.MemberAccountsNo;
 import xyz.jinjin99.gongguyoung.backend.domain.member.entity.Member;
 import xyz.jinjin99.gongguyoung.backend.domain.member.service.MemberService;
@@ -32,6 +33,7 @@ public class PaymentService {
     private final MemberService memberService;
     private final DemandDepositClient demandDepositClient;
     private final PaymentRepository paymentRepository;
+    private final GroupPurchaseRepository groupPurchaseRepository;
 
     /**
      *      1. 공동구매 ID로 계좌번호가져오기
@@ -50,12 +52,14 @@ public class PaymentService {
     public void processPayment(PaymentRequest paymentRequest){
         // 1. 공동구매 ID로 계좌번호가져오기 -> 덕종이형 진행중
 
-        String groupPurchaseAccountNo = "test";
+
+        GroupPurchase groupPurchase = groupPurchaseRepository.findById(paymentRequest.getGroupPurchaseId()).orElseThrow();
+        String groupPurchaseAccountNo = groupPurchase.getAccountNo();
+
         // 2. 회원 아이디로 계좌번호 구하기 -> 지금 해야함
         Member member = memberService.getMember(paymentRequest.getMemberId());
         MemberAccountsNo accountNos = memberService.getAccountNo(paymentRequest.getMemberId());
         // 공동구매 가져오기
-        GroupPurchase groupPurchase = /* groupPurchaseRepository.findById(paymentRequest.getGroupPurchaseId()).orElseThrow(...) */ null;
 
         // 3. Transaction 걸고 송금
         // 3-1 BNPL 일때 BNPL로 결제
@@ -113,8 +117,8 @@ public class PaymentService {
 
 
         // 1) 계좌 정보
-        // TODO: 실제 그룹공동구매 전용 계좌번호 조회로 대체
-        String groupPurchaseAccountNo = "test";
+        // TODO: 실제 그룹공동구매 전용  이게 맞는지 잘 모르겠음
+        String groupPurchaseAccountNo = event.getGroupPurchase().getAccountNo();
         MemberAccountsNo accountNos = memberService.getAccountNo(request.getMemberId());
 
         Long immediateRefundTxNo = null;
