@@ -32,9 +32,9 @@ public class PaymentEvent {
     private Member member;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_purchase_id", nullable = false)
+    @JoinColumn(name = "group_purchase_id", nullable = true)
+    // TODO 테스트를 위해 잠시 풀어둠
     private GroupPurchase groupPurchase;
-    
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -90,6 +90,10 @@ public class PaymentEvent {
             throw new IllegalStateException("amount must equal instantAmount + bnplAmount");
         }
 
+    }
+
+    public void markRefund(){
+        status = PaymentStatus.REFUNDED;
     }
 
 

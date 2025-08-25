@@ -11,8 +11,10 @@ import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.entity.GroupPurchas
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.MemberAccountsNo;
 import xyz.jinjin99.gongguyoung.backend.domain.member.entity.Member;
 import xyz.jinjin99.gongguyoung.backend.domain.member.service.MemberService;
+import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.request.PaymentCancellationRequest;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.request.PaymentRequest;
 
+import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.response.PaymentCancellationResult;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.response.PaymentProcessingResult;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.entity.PaymentEvent;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.repository.PaymentRepository;
@@ -28,7 +30,6 @@ import xyz.jinjin99.gongguyoung.backend.global.utils.TransactionSummaryUtil;
 public class PaymentService {
 
     private final MemberService memberService;
-
     private final DemandDepositClient demandDepositClient;
     private final PaymentRepository paymentRepository;
 
@@ -56,8 +57,6 @@ public class PaymentService {
         MemberAccountsNo accountNos = memberService.getAccountNo(paymentRequest.getMemberId());
         // 공동구매 가져오기
         GroupPurchase groupPurchase = /* groupPurchaseRepository.findById(paymentRequest.getGroupPurchaseId()).orElseThrow(...) */ null;
-
-
 
         // 3. Transaction 걸고 송금
         // 3-1 BNPL 일때 BNPL로 결제
@@ -96,12 +95,109 @@ public class PaymentService {
         paymentRepository.save(paymentEvent);
     }
 
+
+    @Transactional
+    public PaymentCancellationResult refundParticipation(PaymentCancellationRequest request) {
+        // 0) 결제 이벤트 로드 + 소유자 검증
+        PaymentEvent event = paymentRepository.findById(request.getPaymentEventId())
+                .orElseThrow(() -> new IllegalArgumentException("결제 이벤트가 없습니다. id=" + request.getPaymentEventId()));
+
+        if (!event.getMember().getId().equals(request.getMemberId())) {
+            throw new IllegalStateException("본인 결제만 취소할 수 있습니다.");
+        }
+
+        if (event.getStatus() == PaymentStatus.CANCELED) {
+            // 이미 취소/환불 처리된 건
+            return PaymentCancellationResult.builder().build();
+        }
+
+        // (선택) 공동구매 상태로 취소 가능 여부 체크
+
+
+        // 1) 계좌 정보
+        // TODO: 실제 그룹공동구매 전용 계좌번호 조회로 대체
+        String groupPurchaseAccountNo = "test";
+        MemberAccountsNo accountNos = memberService.getAccountNo(request.getMemberId());
+
+        Long immediateRefundTxNo = null;
+        Long bnplRefundTxNo = null;
+
+        // 2) 환불(역이체) — 즉시결제 금액이 있으면: 그룹계좌 → 회원 Starter 계좌
+        if (event.getImmediateAmount() > 0) {
+            UpdateDemandDepositAccountTransferRequest reqImmediateRefund =
+                    buildImmediateRefundRequest(event, accountNos, groupPurchaseAccountNo);
+
+            UpdateDemandDepositAccountTransferResponse resp =
+                    demandDepositClient.updateDemandDepositAccountTransfer(reqImmediateRefund);
+
+            immediateRefundTxNo = resp.getRecords().get(0).getTransactionUniqueNo();
+        }
+
+        // 3) 환불(역이체) — BNPL 금액이 있으면: 그룹계좌 → 회원 Flex(BNPL) 계좌
+        if (event.getBnplAmount() > 0) {
+            UpdateDemandDepositAccountTransferRequest reqBnplRefund =
+                    buildBnplRefundRequest(event, accountNos, groupPurchaseAccountNo);
+
+            UpdateDemandDepositAccountTransferResponse resp =
+                    demandDepositClient.updateDemandDepositAccountTransfer(reqBnplRefund);
+
+            bnplRefundTxNo = resp.getRecords().get(0).getTransactionUniqueNo();
+        }
+
+        // 4) 상태 전이
+        event.markRefund();
+        paymentRepository.save(event);
+
+        return PaymentCancellationResult.builder()
+                .immediateRefundTransactionNo(immediateRefundTxNo)
+                .bnplRefundTransactionNo(bnplRefundTxNo)
+                .build();
+    }
+
+
+    /** 즉시결제 환불: 그룹공동구매계좌 → 회원 Starter 계좌 */
+    private UpdateDemandDepositAccountTransferRequest buildImmediateRefundRequest(
+            PaymentEvent event, MemberAccountsNo accountNos, String groupPurchaseAccountNo
+    ) {
+        return UpdateDemandDepositAccountTransferRequest.builder()
+                .withdrawalAccountNo(groupPurchaseAccountNo)                 // 그룹계좌에서 출금
+                .depositAccountNo(accountNos.getStarterAccountNo())          // 회원 Starter 계좌로 입금
+                .transactionBalance((long) event.getImmediateAmount())
+                .withdrawalTransactionSummary(
+                        TransactionSummaryUtil.createWithdrawSummary("공동구매 환불", 1)
+                )
+                .depositTransactionSummary(
+                        TransactionSummaryUtil.createDepositSummary("공동구매 환불", 1)
+                )
+                .build();
+    }
+
+    /** BNPL 환불: 그룹공동구매계좌 → 회원 Flex(BNPL) 계좌 */
+    private UpdateDemandDepositAccountTransferRequest buildBnplRefundRequest(
+            PaymentEvent event, MemberAccountsNo accountNos, String groupPurchaseAccountNo
+    ) {
+        return UpdateDemandDepositAccountTransferRequest.builder()
+                .withdrawalAccountNo(groupPurchaseAccountNo)             // 그룹계좌에서 출금
+                .depositAccountNo(accountNos.getFlexAccountNo())         // 회원 BNPL(Flex) 계좌로 입금
+                .transactionBalance((long) event.getBnplAmount())
+                .withdrawalTransactionSummary(
+                        TransactionSummaryUtil.createWithdrawSummary("공동구매 BNPL 환불", 1)
+                )
+                .depositTransactionSummary(
+                        TransactionSummaryUtil.createDepositSummary("공동구매 BNPL 환불", 1)
+                )
+                .build();
+    }
+
+
+    // 입금계좌 -> 공동구매 계좌
+    // 출금계좌 -> 회원의 starter
     private Long handleImmediate(PaymentRequest paymentRequest, MemberAccountsNo accountNos, String groupPurchaseAccountNo) {
         UpdateDemandDepositAccountTransferRequest request =
                 UpdateDemandDepositAccountTransferRequest.builder()
-                        .depositAccountNo(groupPurchaseAccountNo)
+                        .depositAccountNo(groupPurchaseAccountNo) //  입금 계좌 -> 공동구매 계좌
                         .transactionBalance((long) paymentRequest.getImmediate())
-                        .withdrawalAccountNo(accountNos.getStarterAccountNo())
+                        .withdrawalAccountNo(accountNos.getStarterAccountNo()) // 출금 계좌 -> 회원의 starter
                         .depositTransactionSummary(
                                 TransactionSummaryUtil.createDepositSummary("공동구매", paymentRequest.getCount())
                         )
@@ -117,6 +213,8 @@ public class PaymentService {
                 .get(0).getTransactionUniqueNo();
 
     }
+
+
 
 
     /**
