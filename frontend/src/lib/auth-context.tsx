@@ -96,7 +96,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // axios 사용
       await api.post("/api/v1/login", { email, password })
-      console.log("성공한건가?");
       // 로그인 성공 후 쿠키에서 사용자 정보 읽기
       const memberCookie = document.cookie
         .split("; ")
