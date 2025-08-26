@@ -118,6 +118,7 @@ export default function CreateCampaignPage() {
   const handleSubmit = async () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
 
@@ -902,7 +903,7 @@ export default function CreateCampaignPage() {
         </div>
 
         {/* Fixed Bottom Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+        <div className="fixed bottom-0 left-0 right-0 bg-white/10 backdrop-blur-md border-t border-white/20 shadow-2xl z-50">
           <div className="container mx-auto px-4 py-4">
             <div className="flex justify-between items-center max-w-4xl mx-auto">
               <div>
@@ -910,8 +911,11 @@ export default function CreateCampaignPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setCurrentStep(currentStep - 1)}
-                    className="px-6 py-3 border-2 border-gray-300 hover:border-purple-600"
+                    onClick={() => {
+                      setCurrentStep(currentStep - 1)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    className="px-6 py-3 border-2 border-white/30 bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 hover:border-white/50 shadow-lg"
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     이전 단계
@@ -924,7 +928,7 @@ export default function CreateCampaignPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="px-6 py-3 text-gray-600 hover:bg-gray-100"
+                    className="px-6 py-3 text-white/80 hover:bg-white/20 hover:text-white backdrop-blur-sm"
                   >
                     취소
                   </Button>
@@ -934,11 +938,11 @@ export default function CreateCampaignPage() {
                   type="button"
                   onClick={handleSubmit}
                   disabled={!canProceedToNextStep() || isSubmitting}
-                  className={`px-8 py-3 font-semibold transition-all duration-200 ${
+                  className={`px-8 py-3 font-semibold transition-all duration-200 shadow-lg ${
                     currentStep === 4
-                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
-                      : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white'
-                  }`}
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-2 border-white/20'
+                      : 'bg-gradient-to-r from-white to-white/90 hover:from-white hover:to-white text-purple-600 border-2 border-white/30'
+                  } ${!canProceedToNextStep() || isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isSubmitting ? (
                     "생성 중..."

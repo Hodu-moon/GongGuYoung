@@ -5,6 +5,8 @@ import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
 import { evaluateStudentCredit, StudentData, CreditResult } from '../../lib/student-credit-ai';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Textarea } from '../ui/textarea';
 
 export const CreditEvaluationForm: React.FC = () => {
   const [studentData, setStudentData] = useState<StudentData>({
@@ -21,10 +23,40 @@ export const CreditEvaluationForm: React.FC = () => {
     hasStudentCard: false,
     hasEnrollmentCertificate: false,
     parentConsent: false,
+    // AI 특화 데이터 초기값
+    previousBnplUsage: {
+      totalUsed: 0,
+      onTimePayments: 0,
+      latePayments: 0,
+      averagePaymentDelay: 0
+    },
+    socialMediaActivity: {
+      hasLinkedIn: false,
+      hasInstagram: false,
+      postFrequency: 'none',
+      professionalContent: false
+    },
+    campusEngagement: {
+      libraryUsageHours: 0,
+      cafeteriaSpending: 0,
+      eventParticipation: 0,
+      studyGroupActivity: false
+    },
+    financialBehavior: {
+      hasPartTimeJob: false,
+      monthlyIncome: 0,
+      savingsAccount: false,
+      creditCardUsage: 'none'
+    },
+    personalityTraits: {
+      responses: []
+    }
   });
 
   const [result, setResult] = useState<CreditResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [personalityInput, setPersonalityInput] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +75,43 @@ export const CreditEvaluationForm: React.FC = () => {
 
   const handleInputChange = (field: keyof StudentData, value: any) => {
     setStudentData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleNestedInputChange = (
+    parentField: keyof StudentData,
+    childField: string,
+    value: any
+  ) => {
+    setStudentData(prev => ({
+      ...prev,
+      [parentField]: {
+        ...((prev as any)[parentField] || {}),
+        [childField]: value
+      }
+    }));
+  };
+
+  const addPersonalityResponse = () => {
+    if (personalityInput.trim()) {
+      setStudentData(prev => ({
+        ...prev,
+        personalityTraits: {
+          ...prev.personalityTraits,
+          responses: [...(prev.personalityTraits?.responses || []), personalityInput.trim()]
+        }
+      }));
+      setPersonalityInput('');
+    }
+  };
+
+  const removePersonalityResponse = (index: number) => {
+    setStudentData(prev => ({
+      ...prev,
+      personalityTraits: {
+        ...prev.personalityTraits,
+        responses: prev.personalityTraits?.responses?.filter((_, i) => i !== index) || []
+      }
+    }));
   };
 
   return (
@@ -189,8 +258,266 @@ export const CreditEvaluationForm: React.FC = () => {
               </div>
             </div>
 
+            {/* AI 특화 분석을 위한 고급 옵션 */}
+            <div className="border-t pt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="w-full mb-4"
+              >
+                {showAdvanced ? '🔽 AI 고급 분석 옵션 숨기기' : '🔼 AI 고급 분석 옵션 보기'}
+              </Button>
+
+              {showAdvanced && (
+                <div className="space-y-6 bg-blue-50 p-4 rounded-lg">
+                  <div className="text-sm text-blue-800 mb-4">
+                    💡 AI가 더 정확한 분석을 위해 사용하는 추가 데이터입니다
+                  </div>
+
+                  {/* 이전 BNPL 사용 이력 */}
+                  <Card className="bg-white">
+                    <CardHeader>
+                      <CardTitle className="text-sm">📊 이전 BNPL 사용 이력</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>총 사용 횟수</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={studentData.previousBnplUsage?.totalUsed || 0}
+                            onChange={(e) => handleNestedInputChange('previousBnplUsage', 'totalUsed', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div>
+                          <Label>정시 상환 횟수</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={studentData.previousBnplUsage?.onTimePayments || 0}
+                            onChange={(e) => handleNestedInputChange('previousBnplUsage', 'onTimePayments', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>연체 횟수</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={studentData.previousBnplUsage?.latePayments || 0}
+                            onChange={(e) => handleNestedInputChange('previousBnplUsage', 'latePayments', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div>
+                          <Label>평균 연체 일수</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={studentData.previousBnplUsage?.averagePaymentDelay || 0}
+                            onChange={(e) => handleNestedInputChange('previousBnplUsage', 'averagePaymentDelay', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* 소셜미디어 활동 */}
+                  <Card className="bg-white">
+                    <CardHeader>
+                      <CardTitle className="text-sm">📱 소셜미디어 활동</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={studentData.socialMediaActivity?.hasLinkedIn || false}
+                            onCheckedChange={(checked) => handleNestedInputChange('socialMediaActivity', 'hasLinkedIn', !!checked)}
+                          />
+                          <Label>LinkedIn 보유</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={studentData.socialMediaActivity?.hasInstagram || false}
+                            onCheckedChange={(checked) => handleNestedInputChange('socialMediaActivity', 'hasInstagram', !!checked)}
+                          />
+                          <Label>Instagram 보유</Label>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>게시 빈도</Label>
+                          <Select 
+                            value={studentData.socialMediaActivity?.postFrequency || 'none'}
+                            onValueChange={(value) => handleNestedInputChange('socialMediaActivity', 'postFrequency', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">없음</SelectItem>
+                              <SelectItem value="low">낮음</SelectItem>
+                              <SelectItem value="medium">보통</SelectItem>
+                              <SelectItem value="high">높음</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={studentData.socialMediaActivity?.professionalContent || false}
+                            onCheckedChange={(checked) => handleNestedInputChange('socialMediaActivity', 'professionalContent', !!checked)}
+                          />
+                          <Label>전문성 콘텐츠 게시</Label>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* 캠퍼스 참여도 */}
+                  <Card className="bg-white">
+                    <CardHeader>
+                      <CardTitle className="text-sm">🏫 캠퍼스 참여도</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>월 도서관 이용시간</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={studentData.campusEngagement?.libraryUsageHours || 0}
+                            onChange={(e) => handleNestedInputChange('campusEngagement', 'libraryUsageHours', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div>
+                          <Label>월 식당 지출 (원)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={studentData.campusEngagement?.cafeteriaSpending || 0}
+                            onChange={(e) => handleNestedInputChange('campusEngagement', 'cafeteriaSpending', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>학기당 행사 참여 횟수</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={studentData.campusEngagement?.eventParticipation || 0}
+                            onChange={(e) => handleNestedInputChange('campusEngagement', 'eventParticipation', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={studentData.campusEngagement?.studyGroupActivity || false}
+                            onCheckedChange={(checked) => handleNestedInputChange('campusEngagement', 'studyGroupActivity', !!checked)}
+                          />
+                          <Label>스터디 그룹 참여</Label>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* 금융 행동 */}
+                  <Card className="bg-white">
+                    <CardHeader>
+                      <CardTitle className="text-sm">💰 금융 행동</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={studentData.financialBehavior?.hasPartTimeJob || false}
+                            onCheckedChange={(checked) => handleNestedInputChange('financialBehavior', 'hasPartTimeJob', !!checked)}
+                          />
+                          <Label>아르바이트</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={studentData.financialBehavior?.savingsAccount || false}
+                            onCheckedChange={(checked) => handleNestedInputChange('financialBehavior', 'savingsAccount', !!checked)}
+                          />
+                          <Label>적금 계좌</Label>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>월 소득 (원)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={studentData.financialBehavior?.monthlyIncome || 0}
+                            onChange={(e) => handleNestedInputChange('financialBehavior', 'monthlyIncome', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div>
+                          <Label>신용카드 사용</Label>
+                          <Select 
+                            value={studentData.financialBehavior?.creditCardUsage || 'none'}
+                            onValueChange={(value) => handleNestedInputChange('financialBehavior', 'creditCardUsage', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">없음</SelectItem>
+                              <SelectItem value="light">가벼움</SelectItem>
+                              <SelectItem value="moderate">보통</SelectItem>
+                              <SelectItem value="heavy">많음</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* 성향 질문 */}
+                  <Card className="bg-white">
+                    <CardHeader>
+                      <CardTitle className="text-sm">💭 성향 질문 답변</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex gap-2">
+                        <Textarea
+                          placeholder="예: 계획적으로 미리 준비하는 편입니다"
+                          value={personalityInput}
+                          onChange={(e) => setPersonalityInput(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button type="button" onClick={addPersonalityResponse} size="sm">
+                          추가
+                        </Button>
+                      </div>
+                      
+                      {studentData.personalityTraits?.responses && studentData.personalityTraits.responses.length > 0 && (
+                        <div className="space-y-2">
+                          {studentData.personalityTraits.responses.map((response, index) => (
+                            <div key={index} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                              <span className="text-sm">{response}</span>
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => removePersonalityResponse(index)}
+                              >
+                                ❌
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'AI 평가 중...' : '신용 평가하기'}
+              {loading ? 'AI 평가 중...' : '🤖 AI 신용 평가하기'}
             </Button>
           </form>
         </CardContent>
@@ -237,6 +564,69 @@ export const CreditEvaluationForm: React.FC = () => {
                   ))}
                 </ul>
               </div>
+
+              {/* AI 심층 분석 결과 */}
+              {result.aiInsights && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-4 text-blue-800">🤖 AI 심층 분석 결과</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 성향 분석 */}
+                    <Card className="bg-blue-50 border-blue-200">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-blue-800">💭 성향 분석</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-blue-900">{result.aiInsights.personalityAssessment}</p>
+                      </CardContent>
+                    </Card>
+
+                    {/* 추천사항 */}
+                    <Card className="bg-green-50 border-green-200">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-green-800">💡 추천사항</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-green-900">{result.aiInsights.recommendations}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    {/* 위험 요소 */}
+                    <Card className="bg-red-50 border-red-200">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-red-800">⚠️ 주요 위험 요소</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-1">
+                          {result.aiInsights.riskFactors.map((factor, index) => (
+                            <li key={index} className="text-sm text-red-900">
+                              • {factor}
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+
+                    {/* 강점 */}
+                    <Card className="bg-emerald-50 border-emerald-200">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-emerald-800">✨ 주요 강점</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-1">
+                          {result.aiInsights.strengths.map((strength, index) => (
+                            <li key={index} className="text-sm text-emerald-900">
+                              • {strength}
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

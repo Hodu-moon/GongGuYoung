@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.client.DemandDepositClient;
+import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.BaseRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.UpdateDemandDepositAccountTransferRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.UpdateDemandDepositAccountTransferResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.entity.GroupPurchase;
@@ -41,6 +42,7 @@ public class PaymentService {
      *      3. 송금
      *      3-1 BNPL 일때 BNPL로 결제
      *      3-2 일반 결제일때 일반결제 얼마
+     *      4. groupPurchase count 올리기
      *      그 후 저장
      *      TODO 결제 에는 출금계좌, 입금계좌
      *          두개가 존재함 ->
@@ -66,17 +68,25 @@ public class PaymentService {
         // 3-2 일반 결제일때 일반결제 얼마
         Long bnplTxNo = null;
         Long immediateTxNo = null;
+
+        String userKey = member.getUserKey();
         switch (paymentRequest.getPaymentType()){
             case "IMMEDIATE_ONLY" -> {
-                immediateTxNo = handleImmediate(paymentRequest, accountNos, groupPurchaseAccountNo);
+                immediateTxNo = handleImmediate(userKey, paymentRequest, accountNos, groupPurchaseAccountNo);
             }
             case "BNPL" -> {
-                PaymentProcessingResult paymentProcessingResult = handleBnpl(paymentRequest, accountNos, groupPurchaseAccountNo);
+                PaymentProcessingResult paymentProcessingResult = handleBnpl(userKey, paymentRequest, accountNos, groupPurchaseAccountNo);
                 bnplTxNo = paymentProcessingResult.getBnplTransactionNo();
                 immediateTxNo = paymentProcessingResult.getImmediateTransactionNo();
             }
             default -> throw new RuntimeException("지원하지 않는 결제 타입입니다.");
         }
+
+        // 4. groupPurchase 에 수량 업데이트
+        // TODO 나중에 바꿔야함
+        for(int c = 0; c < paymentRequest.getCount(); c++)
+            groupPurchase.increaseCurrentCount();
+
 
 
         PaymentEvent paymentEvent = PaymentEvent.builder()
@@ -84,8 +94,9 @@ public class PaymentService {
                 .groupPurchase(groupPurchase)
                 .type(PaymentType.valueOf(paymentRequest.getPaymentType())) // IMMEDIATE_ONLY, BNPL
                 .status(PaymentStatus.PAID)              // @Builder는 기본값 유지 안 됨: 명시!
-                .bnplStatus(BnplStatus.PROCESSING)                        // TODO: 팀 정의 상태에 맞게 설정
+                .bnplStatus(BnplStatus.PROCESSING)
                 .immediateAmount(paymentRequest.getImmediate())
+                .count(paymentRequest.getCount())
                 .bnplAmount(paymentRequest.getBnpl())
                 .amount(paymentRequest.getImmediate() + paymentRequest.getBnpl())
                 .bnplWithdrawalTransactionNo(bnplTxNo)
@@ -118,7 +129,8 @@ public class PaymentService {
 
         // 1) 계좌 정보
         // TODO: 실제 그룹공동구매 전용  이게 맞는지 잘 모르겠음
-        String groupPurchaseAccountNo = event.getGroupPurchase().getAccountNo();
+        GroupPurchase groupPurchase = event.getGroupPurchase();
+        String groupPurchaseAccountNo = groupPurchase.getAccountNo();
         MemberAccountsNo accountNos = memberService.getAccountNo(request.getMemberId());
 
         Long immediateRefundTxNo = null;
@@ -149,6 +161,13 @@ public class PaymentService {
         // 4) 상태 전이
         event.markRefund();
         paymentRepository.save(event);
+
+        // 5) 그룹 구매 카운트 내리기
+        int count = event.getCount();
+
+        for(int c = 0; c < count; c++){
+            groupPurchase.decreaseCurrentCount();
+        }
 
         return PaymentCancellationResult.builder()
                 .immediateRefundTransactionNo(immediateRefundTxNo)
@@ -194,9 +213,10 @@ public class PaymentService {
 
     // 입금계좌 -> 공동구매 계좌
     // 출금계좌 -> 회원의 starter
-    private Long handleImmediate(PaymentRequest paymentRequest, MemberAccountsNo accountNos, String groupPurchaseAccountNo) {
+    private Long handleImmediate(String userKey, PaymentRequest paymentRequest, MemberAccountsNo accountNos, String groupPurchaseAccountNo) {
         UpdateDemandDepositAccountTransferRequest request =
                 UpdateDemandDepositAccountTransferRequest.builder()
+                        .header(BaseRequest.Header.builder().userKey(userKey).build())
                         .depositAccountNo(groupPurchaseAccountNo) //  입금 계좌 -> 공동구매 계좌
                         .transactionBalance((long) paymentRequest.getImmediate())
                         .withdrawalAccountNo(accountNos.getStarterAccountNo()) // 출금 계좌 -> 회원의 starter
@@ -224,25 +244,26 @@ public class PaymentService {
      *
      * @return
      */
-    private PaymentProcessingResult handleBnpl(PaymentRequest paymentRequest, MemberAccountsNo accountNos, String groupPurchaseAccountNo) {
+    private PaymentProcessingResult handleBnpl(String userKey, PaymentRequest paymentRequest, MemberAccountsNo accountNos, String groupPurchaseAccountNo) {
         if (paymentRequest.getImmediate() == 0) {
             // BNPL 전액
-            return handleBnplOnly(paymentRequest, accountNos, groupPurchaseAccountNo);
+            return handleBnplOnly(userKey, paymentRequest, accountNos, groupPurchaseAccountNo);
         } else {
             // 혼합 결제 (즉시 + BNPL)
-            return handleMixedPayment(paymentRequest, accountNos, groupPurchaseAccountNo);
+            return handleMixedPayment(userKey, paymentRequest, accountNos, groupPurchaseAccountNo);
         }
 
     }
 
     /** BNPL만 처리 */
     private PaymentProcessingResult handleBnplOnly(
+            String userKey,
             PaymentRequest paymentRequest,
             MemberAccountsNo accountNos,
             String groupPurchaseAccountNo
     ) {
         UpdateDemandDepositAccountTransferRequest bnplRequest =
-                buildBnplRequest(paymentRequest, accountNos, groupPurchaseAccountNo);
+                buildBnplRequest(userKey, paymentRequest, accountNos, groupPurchaseAccountNo);
 
         UpdateDemandDepositAccountTransferResponse bnplResp =
                 demandDepositClient.updateDemandDepositAccountTransfer(bnplRequest);
@@ -261,14 +282,15 @@ public class PaymentService {
     /** 혼합 결제: BNPL + 즉시 */
 //    @Transactional // DB 저장/상태 갱신은 트랜잭션, 외부송금은 보상 트랜잭션 고려
     private PaymentProcessingResult handleMixedPayment(
+            String userKey,
             PaymentRequest paymentRequest,
             MemberAccountsNo accountNos,
             String groupPurchaseAccountNo
     ) {
         UpdateDemandDepositAccountTransferRequest bnplRequest =
-                buildBnplRequest(paymentRequest, accountNos, groupPurchaseAccountNo);
+                buildBnplRequest(userKey, paymentRequest, accountNos, groupPurchaseAccountNo);
         UpdateDemandDepositAccountTransferRequest immediateRequest =
-                buildImmediateRequest(paymentRequest, accountNos, groupPurchaseAccountNo);
+                buildImmediateRequest(userKey, paymentRequest, accountNos, groupPurchaseAccountNo);
 
         Long bnplTxnNo = null;
         Long immediateTxnNo = null;
@@ -309,8 +331,9 @@ public class PaymentService {
     }
 
     /** BNPL 결제 요청 생성 */
-    private UpdateDemandDepositAccountTransferRequest buildBnplRequest(PaymentRequest paymentRequest, MemberAccountsNo accountNos, String groupPurchaseAccountNo) {
+    private UpdateDemandDepositAccountTransferRequest buildBnplRequest(String userKey, PaymentRequest paymentRequest, MemberAccountsNo accountNos, String groupPurchaseAccountNo) {
         return UpdateDemandDepositAccountTransferRequest.builder()
+                .header(BaseRequest.Header.builder().userKey(userKey).build())
                 .depositAccountNo(groupPurchaseAccountNo)
                 .transactionBalance((long) paymentRequest.getBnpl())
                 .withdrawalAccountNo(accountNos.getFlexAccountNo())
@@ -320,8 +343,9 @@ public class PaymentService {
     }
 
     /** 즉시결제 요청 생성 */
-    private UpdateDemandDepositAccountTransferRequest buildImmediateRequest(PaymentRequest paymentRequest, MemberAccountsNo accountNos, String groupPurchaseAccountNo) {
+    private UpdateDemandDepositAccountTransferRequest buildImmediateRequest(String userKey, PaymentRequest paymentRequest, MemberAccountsNo accountNos, String groupPurchaseAccountNo) {
         return UpdateDemandDepositAccountTransferRequest.builder()
+                .header(BaseRequest.Header.builder().userKey(userKey).build())
                 .depositAccountNo(groupPurchaseAccountNo)
                 .transactionBalance((long) paymentRequest.getImmediate())
                 .withdrawalAccountNo(accountNos.getStarterAccountNo())
