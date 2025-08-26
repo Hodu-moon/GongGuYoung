@@ -339,7 +339,7 @@ export default function CampaignDetailPage() {
                     <div className="text-2xl font-bold text-green-600">
                       {campaign.currentQuantity}
                     </div>
-                    <div className="text-sm text-green-700">참여자</div>
+                    <div className="text-sm text-green-700">현재 수</div>
                   </div>
                   <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl">
                     <div className="text-2xl font-bold text-orange-600">
@@ -418,7 +418,7 @@ export default function CampaignDetailPage() {
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4" />
-                      <span>참여자 수: {campaign.currentQuantity}</span>
+                      <span>현재 개수: {campaign.currentQuantity}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
@@ -480,7 +480,7 @@ export default function CampaignDetailPage() {
                                     id="quantity"
                                     type="number"
                                     min="1"
-                                    max="5"
+                                    max={(campaign.targetQuantity-campaign.currentQuantity)}
                                     value={quantity}
                                     onChange={(e) =>
                                       setQuantity(Math.max(1, Number.parseInt(e.target.value) || 1))
@@ -490,13 +490,13 @@ export default function CampaignDetailPage() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setQuantity(Math.min(5, quantity + 1))}
+                                    onClick={() => setQuantity(Math.min((campaign.targetQuantity-campaign.currentQuantity), quantity + 1))}
                                     className="w-10 h-10 p-0"
                                   >
                                     +
                                   </Button>
                                 </div>
-                                <p className="text-xs text-gray-500">최대 5개까지 주문 가능</p>
+                                <p className="text-xs text-gray-500">최대 {(campaign.targetQuantity-campaign.currentQuantity)}개까지 주문 가능</p>
                               </div>
                             )}
 
