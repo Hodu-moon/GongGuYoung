@@ -122,7 +122,7 @@ export class GroupPurchaseApi {
     return {
       id: String(gp.id),
       title: gp.title,
-      description: gp.productDescription || gp.context || "",
+      description: gp.context ||gp.productDescription  || "",
       status,
       endDate: gp.endAt,
       createdAt: gp.createdAt,
