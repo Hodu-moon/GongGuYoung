@@ -62,7 +62,6 @@ public class MemberService {
         log.info("searchMember is null : {}", Objects.isNull(memberRecord));
         String starterAccountNo = null, bnplAccountNo = null, userKey = null ;
 
-        String apiKey = managerClient.getOrCreateApiKey();
         // 2. 이메일로 서버에 회원이 존재하는지 확인
         if(Objects.isNull(memberRecord)){
             // 2 - 2 존재 하지 않으면 멤버 생성
@@ -73,7 +72,6 @@ public class MemberService {
             CreateDemandDepositAccountRequest starterAccountRequest = CreateDemandDepositAccountRequest.builder()
                     .accountTypeUniqueNo(starterUniqueNo)
                     .header(BaseRequest.Header.builder()
-                            .apiKey(apiKey)
                             .userKey(userKey)
                             .build())
                     .build();
@@ -85,7 +83,7 @@ public class MemberService {
 
 
             CreateDemandDepositAccountRequest flexAccountRequest = CreateDemandDepositAccountRequest.builder()
-                    .header(BaseRequest.Header.builder().apiKey(apiKey).userKey(userKey).build())
+                    .header(BaseRequest.Header.builder().userKey(userKey).build())
                     .accountTypeUniqueNo(flexUniqueNo)
                     .build();
 
@@ -97,6 +95,7 @@ public class MemberService {
             // 일반 계좌에 5만원 추가
             demandDepositClient.updateDemandDepositAccountDeposit(
                     UpdateDemandDepositAccountDepositRequest.builder()
+                            .header(BaseRequest.Header.builder().userKey(userKey).build())
                             .accountNo(bnplAccountNo)
                             .transactionBalance(100000L)
                             .transactionSummary("회원가입")
@@ -105,6 +104,7 @@ public class MemberService {
 
             demandDepositClient.updateDemandDepositAccountDeposit(
                     UpdateDemandDepositAccountDepositRequest.builder()
+                            .header(BaseRequest.Header.builder().userKey(userKey).build())
                             .accountNo(starterAccountNo)
                             .transactionBalance(50000L)
                             .transactionSummary("회원가입")
@@ -118,7 +118,6 @@ public class MemberService {
             InquireDemandDepositAccountListRequest demandRequest = InquireDemandDepositAccountListRequest.builder()
                     .header(BaseRequest.Header.builder()
                             .userKey(userKey)
-                            .apiKey(apiKey)
                             .build())
                     .build();
 
