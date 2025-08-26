@@ -97,6 +97,10 @@ public class PaymentEvent {
 
     }
 
+    public void markBnplStatusDONE(){
+        bnplStatus = BnplStatus.DONE;
+    }
+
     public void markRefund(){
         status = PaymentStatus.REFUNDED;
     }

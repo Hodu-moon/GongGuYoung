@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.client.DemandDepositClient;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.InquireDemandDepositAccountBalanceRequest;
+import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.UpdateDemandDepositAccountTransferRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.InquireDemandDepositAccountBalanceResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.entity.GroupPurchase;
 import xyz.jinjin99.gongguyoung.backend.domain.member.entity.Member;
@@ -29,11 +30,8 @@ public class BnplService {
     private final MemberService memberService;
     private final PaymentRepository paymentRepository;
 
-
     public BNPLRemainResponse getBNPLRemain(Long memberId){
-
         Member member = memberService.getMember(memberId);
-
         InquireDemandDepositAccountBalanceResponse response = demandDepositClient.inquireDemandDepositAccountBalance(
                 InquireDemandDepositAccountBalanceRequest.builder()
                         .accountNo(member.getFlexAccountNo())
@@ -60,6 +58,66 @@ public class BnplService {
         List<ProcessingBnplResponse> list = listProcessBnplPaymentsV1(memberId);
 
         return list;
+    }
+
+    // BNPL 갚기
+    // 자기 starter 에서 돈 빼서 flex로 갚아야함
+    // payment bnpl status -> done으로 바꾸는 작업도 필요함
+    public void payBnpl(Long paymentId, Long memberId){
+        PaymentEvent event = paymentRepository.findById(paymentId).orElseThrow(() -> new RuntimeException("ID 에 해당하는 payment를 찾을 수 없습니다."));
+
+        //요청 사람과, event의 사람이 다르면 에러
+        if(!Objects.equals(event.getMember().getId(), memberId)){
+            throw new RuntimeException("회원 정보가 다릅니다.");
+        }
+
+        if(Objects.isNull(event.getBnplStatus()) || event.getBnplStatus() == BnplStatus.DONE){
+            throw new RuntimeException("이미 처리된 작업입니다.");
+        }
+
+        int toPay = event.getBnplAmount();
+        // starter 계정에 남은 돈 확인
+        Member member = memberService.getMember(memberId);
+        if(!canPayBNPL(member, toPay)){
+            throw new RuntimeException("잔액 계좌가 부족합니다.");
+        }
+
+        // starter -> flex 로 돈 입금
+        updateDeposit(member.getStarterAccountNo(), member.getFlexAccountNo(), toPay);
+
+        // event의 status 변경
+        event.markBnplStatusDONE();
+    }
+
+
+    private void updateDeposit(String starterAccountNo, String flexAccountNo, int transactionBalance){
+        demandDepositClient.updateDemandDepositAccountTransfer(UpdateDemandDepositAccountTransferRequest.builder()
+                        .withdrawalAccountNo(starterAccountNo)
+                        .depositAccountNo(flexAccountNo)
+                        .transactionBalance((long)transactionBalance)
+                        .depositTransactionSummary("bnpl 갚기")
+                        .withdrawalTransactionSummary("bnpl " + transactionBalance + "  갚기 ")
+                .build());
+
+
+    }
+
+
+    private boolean canPayBNPL(Member member, int toPay){
+        InquireDemandDepositAccountBalanceResponse response = demandDepositClient.inquireDemandDepositAccountBalance(
+                InquireDemandDepositAccountBalanceRequest.builder()
+                        .accountNo(member.getStarterAccountNo())
+                        .build()
+        );
+
+        InquireDemandDepositAccountBalanceResponse.Record record = response.getRecord();
+
+        Long accountBalance = record.getAccountBalance();
+
+
+
+        return accountBalance >= toPay;
+
     }
 
     private List<ProcessingBnplResponse> listProcessBnplPaymentsV1(Long memberId){
