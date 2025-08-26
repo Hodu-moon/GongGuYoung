@@ -28,3 +28,12 @@ fin-open:
   member-id: novelss5573@gmail.com
   api:
     base-url: https://finopenapi.ssafy.io/ssafy/api/v1
+
+account:
+  starter:
+    type-unique-no: 088-1-a4827963282942
+  flex:
+    type-unique-no: 088-1-982fe078d3464b
+
+image:
+  path: classpath:static/images/
