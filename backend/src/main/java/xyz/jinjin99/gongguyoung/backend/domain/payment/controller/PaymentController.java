@@ -77,5 +77,19 @@ public class PaymentController {
     }
 
 
+    // bnpl 한도 늘리기
+    // bnpl 걍 계좌ㅣ에 10만원
+    // -> 평가모델
+    //
+
+    @Operation(summary = "작업중")
+    public ResponseEntity<?> increaseBnplLimit(/* Long memberId, int limit */){
+
+
+
+
+        return ResponseEntity.ok("성공적으로 처리 되었습니다.");
+    }
+
 
 }

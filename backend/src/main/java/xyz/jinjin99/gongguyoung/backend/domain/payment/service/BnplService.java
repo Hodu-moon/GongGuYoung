@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.client.DemandDepositClient;
+import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.BaseRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.InquireDemandDepositAccountBalanceRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.UpdateDemandDepositAccountTransferRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.InquireDemandDepositAccountBalanceResponse;
@@ -32,8 +33,10 @@ public class BnplService {
 
     public BNPLRemainResponse getBNPLRemain(Long memberId){
         Member member = memberService.getMember(memberId);
+
         InquireDemandDepositAccountBalanceResponse response = demandDepositClient.inquireDemandDepositAccountBalance(
                 InquireDemandDepositAccountBalanceRequest.builder()
+                        .header(BaseRequest.Header.builder().userKey(member.getUserKey()).build())
                         .accountNo(member.getFlexAccountNo())
                         .build()
         );
@@ -83,29 +86,30 @@ public class BnplService {
         }
 
         // starter -> flex 로 돈 입금
-        updateDeposit(member.getStarterAccountNo(), member.getFlexAccountNo(), toPay);
+        updateDeposit(member.getUserKey(), member.getStarterAccountNo(), member.getFlexAccountNo(), toPay);
 
         // event의 status 변경
         event.markBnplStatusDONE();
     }
 
 
-    private void updateDeposit(String starterAccountNo, String flexAccountNo, int transactionBalance){
+    private void updateDeposit(String userKey, String starterAccountNo, String flexAccountNo, int transactionBalance){
         demandDepositClient.updateDemandDepositAccountTransfer(UpdateDemandDepositAccountTransferRequest.builder()
+                        .header(BaseRequest.Header.builder().userKey(userKey).build())
                         .withdrawalAccountNo(starterAccountNo)
                         .depositAccountNo(flexAccountNo)
                         .transactionBalance((long)transactionBalance)
                         .depositTransactionSummary("bnpl 갚기")
                         .withdrawalTransactionSummary("bnpl " + transactionBalance + "  갚기 ")
                 .build());
-
-
     }
 
 
     private boolean canPayBNPL(Member member, int toPay){
+
         InquireDemandDepositAccountBalanceResponse response = demandDepositClient.inquireDemandDepositAccountBalance(
                 InquireDemandDepositAccountBalanceRequest.builder()
+                        .header(BaseRequest.Header.builder().userKey(member.getUserKey()).build())
                         .accountNo(member.getStarterAccountNo())
                         .build()
         );
@@ -122,6 +126,7 @@ public class BnplService {
 
     private List<ProcessingBnplResponse> listProcessBnplPaymentsV1(Long memberId){
         List<PaymentEvent> paymentEvents = paymentRepository.findByMemberId(memberId);
+
         List<ProcessingBnplResponse> lists = new ArrayList<>();
 
 
@@ -157,5 +162,7 @@ public class BnplService {
 
         return lists;
     }
+
+//    public void increaseBnplLimit(int memberId, )
 
 }
