@@ -20,6 +20,7 @@ fin-open:
   member-id: novelss5573@gmail.com
   api:
     base-url: https://finopenapi.ssafy.io/ssafy/api/v1/
+    key: 7da5c0d6b0904c38b1968e591b050373
 
 image:
   path: classpath:static/images/
