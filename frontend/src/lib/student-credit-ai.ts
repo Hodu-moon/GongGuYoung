@@ -68,10 +68,435 @@ export interface CreditResult {
   };
 }
 
+// 시연용 커스텀 시나리오들
+export interface DemoScenario {
+  name: string;
+  description: string;
+  result: CreditResult;
+}
+
+export const DEMO_SCENARIOS: DemoScenario[] = [
+  {
+    name: "모범 학생",
+    description: "우수한 성적과 다양한 활동을 보여주는 이상적인 학생",
+    result: {
+      bnplLimit: 450000,
+      riskScore: 15,
+      reasons: [
+        "전공 특성상 높은 취업률과 안정적 미래 소득 예상",
+        "과거 BNPL 사용에서 100% 정시 상환 이력",
+        "LinkedIn 보유 및 전문성 콘텐츠 게시로 미래 계획성 확인"
+      ],
+      aiInsights: {
+        personalityAssessment: "매우 책임감 있고 계획적인 성향을 보임. 학업과 커리어에 대한 명확한 목표 의식이 있으며, 금융 관리 능력이 우수함",
+        riskFactors: ["없음 - 모든 지표가 긍정적"],
+        strengths: [
+          "완벽한 BNPL 상환 이력",
+          "높은 학업 성취도 (GPA 4.2+)",
+          "적극적인 전문성 개발",
+          "균형잡힌 소득-지출 관리",
+          "강한 사회적 책임감"
+        ],
+        recommendations: "현재 수준을 유지하면서 더 큰 금액의 금융 상품 이용을 고려해볼 수 있습니다. 졸업 후 신용카드 한도 상향도 가능할 것으로 예상됩니다."
+      }
+    }
+  },
+  {
+    name: "위험 학생",
+    description: "여러 위험 요소를 가진 고위험 학생 사례",
+    result: {
+      bnplLimit: 80000,
+      riskScore: 75,
+      reasons: [
+        "과거 BNPL 연체 이력이 다수 확인됨",
+        "낮은 캠퍼스 참여도로 학업 성실성 의문",
+        "불규칙한 소득과 높은 신용카드 사용률"
+      ],
+      aiInsights: {
+        personalityAssessment: "충동적 소비 성향과 계획성 부족이 우려됨. 단기적 만족을 위한 의사결정 패턴이 관찰되며, 장기적 금융 계획 능력 부족",
+        riskFactors: [
+          "평균 5일 연체로 상환 의지 의문",
+          "도서관 이용 거의 없음 (월 3시간)",
+          "과도한 신용카드 사용 (heavy)",
+          "소셜미디어 활동 없어 성향 파악 어려움"
+        ],
+        strengths: [
+          "아르바이트로 일정 소득 확보",
+          "부모 동의 완료로 가족 지원 가능성"
+        ],
+        recommendations: "금융 교육 프로그램 수강을 권장합니다. 소액 거래부터 시작하여 상환 실적을 쌓은 후 한도 증액을 고려하시기 바랍니다."
+      }
+    }
+  },
+  {
+    name: "평균 학생",
+    description: "일반적인 수준의 평범한 학생 사례",
+    result: {
+      bnplLimit: 200000,
+      riskScore: 45,
+      reasons: [
+        "평균적인 학업 성취도와 출석률",
+        "제한적인 BNPL 사용 경험으로 리스크 판단 어려움",
+        "적절한 캠퍼스 생활과 소셜미디어 활동"
+      ],
+      aiInsights: {
+        personalityAssessment: "안정적이고 평범한 성향. 큰 위험 요소는 없으나 특별한 강점도 부각되지 않음. 표준적인 대학생 라이프스타일 유지",
+        riskFactors: [
+          "BNPL 사용 이력 부족으로 상환 패턴 예측 어려움",
+          "특별한 전문성 개발 활동 부족"
+        ],
+        strengths: [
+          "꾸준한 학업 유지 (GPA 3.2)",
+          "규칙적인 도서관 이용 (월 40시간)",
+          "적절한 사회적 활동 참여"
+        ],
+        recommendations: "현재 수준에서 BNPL을 경험해보며 금융 이력을 쌓아가시기 바랍니다. 성실한 상환으로 신용도를 높일 수 있습니다."
+      }
+    }
+  },
+  {
+    name: "신입생",
+    description: "갓 입학한 신입생으로 데이터가 부족한 경우",
+    result: {
+      bnplLimit: 120000,
+      riskScore: 60,
+      reasons: [
+        "신입생으로 충분한 대학 생활 데이터 부족",
+        "BNPL 사용 이력 없어 상환 패턴 예측 불가",
+        "높은 부모 관여도로 일정 수준 안전성 확보"
+      ],
+      aiInsights: {
+        personalityAssessment: "아직 대학 환경에 적응 중인 단계. 성향 파악을 위한 충분한 데이터가 축적되지 않았으나, 기본적인 책임감은 보유한 것으로 판단",
+        riskFactors: [
+          "대학 생활 경험 부족",
+          "금융 거래 이력 미미",
+          "독립적 의사결정 경험 부족"
+        ],
+        strengths: [
+          "부모 동의 및 지원 체계 확보",
+          "새로운 환경에 대한 적응 의지",
+          "기본 서류 준비 성실성"
+        ],
+        recommendations: "소액 거래부터 시작하여 대학 생활과 금융 관리 경험을 쌓아가시기 바랍니다. 1학기 후 재평가를 통해 한도 조정이 가능합니다."
+      }
+    }
+  }
+];
+
+/**
+ * 시연용 AI 평가 - 빠른 시나리오 선택
+ */
+export const evaluateWithDemoScenario = async (
+  studentData: StudentData, 
+  scenarioName: string
+): Promise<CreditResult> => {
+  return evaluateStudentCredit(studentData, scenarioName);
+};
+
+/**
+ * 사용 가능한 시연 시나리오 목록 조회
+ */
+export const getAvailableDemoScenarios = (): { name: string; description: string }[] => {
+  return DEMO_SCENARIOS.map(scenario => ({
+    name: scenario.name,
+    description: scenario.description
+  }));
+};
+
+/**
+ * 시연용 학생 데이터 프리셋
+ */
+export const DEMO_STUDENT_DATA: Record<string, StudentData> = {
+  "모범학생": {
+    studentId: "2021001234",
+    university: "서울대학교",
+    major: "컴퓨터공학과",
+    semester: 6,
+    gpa: 4.3,
+    totalCredits: 120,
+    attendanceRate: 98,
+    scholarshipHistory: true,
+    studentCouncilActivity: true,
+    clubActivity: true,
+    hasStudentCard: true,
+    hasEnrollmentCertificate: true,
+    parentConsent: true,
+    // AI 특화 데이터
+    previousBnplUsage: {
+      totalUsed: 5,
+      onTimePayments: 5,
+      latePayments: 0,
+      averagePaymentDelay: 0
+    },
+    socialMediaActivity: {
+      hasLinkedIn: true,
+      hasInstagram: true,
+      postFrequency: 'medium',
+      professionalContent: true
+    },
+    campusEngagement: {
+      libraryUsageHours: 80,
+      cafeteriaSpending: 120000,
+      eventParticipation: 8,
+      studyGroupActivity: true
+    },
+    financialBehavior: {
+      hasPartTimeJob: true,
+      monthlyIncome: 800000,
+      savingsAccount: true,
+      creditCardUsage: 'light'
+    },
+    personalityTraits: {
+      responses: [
+        "계획적으로 미리 준비하는 편입니다",
+        "약속은 반드시 지키려고 노력합니다",
+        "새로운 기술을 배우는 것을 좋아합니다",
+        "팀 프로젝트에서 책임감 있게 참여합니다"
+      ]
+    }
+  },
+  "위험학생": {
+    studentId: "2020005678",
+    university: "지방대학교",
+    major: "예술학과",
+    semester: 8,
+    gpa: 2.1,
+    totalCredits: 80,
+    attendanceRate: 65,
+    scholarshipHistory: false,
+    studentCouncilActivity: false,
+    clubActivity: false,
+    hasStudentCard: true,
+    hasEnrollmentCertificate: true,
+    parentConsent: false,
+    previousBnplUsage: {
+      totalUsed: 8,
+      onTimePayments: 3,
+      latePayments: 5,
+      averagePaymentDelay: 12
+    },
+    socialMediaActivity: {
+      hasLinkedIn: false,
+      hasInstagram: true,
+      postFrequency: 'high',
+      professionalContent: false
+    },
+    campusEngagement: {
+      libraryUsageHours: 5,
+      cafeteriaSpending: 200000,
+      eventParticipation: 1,
+      studyGroupActivity: false
+    },
+    financialBehavior: {
+      hasPartTimeJob: false,
+      monthlyIncome: 200000,
+      savingsAccount: false,
+      creditCardUsage: 'heavy'
+    },
+    personalityTraits: {
+      responses: [
+        "일단 하고 싶은 건 바로 해야 해요",
+        "계획보다는 즉흥적인 게 좋아요",
+        "돈 관리는 어려워서 잘 모르겠어요",
+        "나중에 생각해보면 되죠"
+      ]
+    }
+  },
+  "평균학생": {
+    studentId: "2021002468",
+    university: "중앙대학교",
+    major: "경영학과",
+    semester: 4,
+    gpa: 3.2,
+    totalCredits: 75,
+    attendanceRate: 88,
+    scholarshipHistory: false,
+    studentCouncilActivity: false,
+    clubActivity: true,
+    hasStudentCard: true,
+    hasEnrollmentCertificate: true,
+    parentConsent: true,
+    previousBnplUsage: {
+      totalUsed: 2,
+      onTimePayments: 2,
+      latePayments: 0,
+      averagePaymentDelay: 0
+    },
+    socialMediaActivity: {
+      hasLinkedIn: false,
+      hasInstagram: true,
+      postFrequency: 'low',
+      professionalContent: false
+    },
+    campusEngagement: {
+      libraryUsageHours: 40,
+      cafeteriaSpending: 150000,
+      eventParticipation: 3,
+      studyGroupActivity: true
+    },
+    financialBehavior: {
+      hasPartTimeJob: true,
+      monthlyIncome: 500000,
+      savingsAccount: true,
+      creditCardUsage: 'moderate'
+    },
+    personalityTraits: {
+      responses: [
+        "보통 무난하게 생활하는 편이에요",
+        "특별히 뛰어나지도 않고 나쁘지도 않아요",
+        "필요할 때는 열심히 하려고 해요",
+        "평범한게 좋은 거 아닌가요?"
+      ]
+    }
+  }
+};
+
+/**
+ * 시연용 AI 평가 - 커스텀 학생 데이터로 실제 AI 호출
+ */
+export const evaluateWithCustomData = async (customData: Partial<StudentData>): Promise<CreditResult> => {
+  // 기본 데이터와 커스텀 데이터 병합
+  const baseData: StudentData = {
+    studentId: "DEMO001",
+    university: "시연대학교",
+    major: "시연학과",
+    semester: 4,
+    gpa: 3.5,
+    totalCredits: 80,
+    attendanceRate: 90,
+    scholarshipHistory: false,
+    studentCouncilActivity: false,
+    clubActivity: false,
+    hasStudentCard: true,
+    hasEnrollmentCertificate: true,
+    parentConsent: true
+  };
+
+  const mergedData: StudentData = {
+    ...baseData,
+    ...customData,
+    // 중첩 객체들은 별도 처리
+    previousBnplUsage: customData.previousBnplUsage ? {
+      ...baseData.previousBnplUsage,
+      ...customData.previousBnplUsage
+    } : baseData.previousBnplUsage,
+    socialMediaActivity: customData.socialMediaActivity ? {
+      ...baseData.socialMediaActivity,
+      ...customData.socialMediaActivity
+    } : baseData.socialMediaActivity,
+    campusEngagement: customData.campusEngagement ? {
+      ...baseData.campusEngagement,
+      ...customData.campusEngagement
+    } : baseData.campusEngagement,
+    financialBehavior: customData.financialBehavior ? {
+      ...baseData.financialBehavior,
+      ...customData.financialBehavior
+    } : baseData.financialBehavior,
+    personalityTraits: customData.personalityTraits ? {
+      ...baseData.personalityTraits,
+      ...customData.personalityTraits
+    } : baseData.personalityTraits
+  };
+
+  // 실제 AI로 평가 (시나리오 모드 아님)
+  return evaluateStudentCredit(mergedData);
+};
+
+/**
+ * 시연용 빠른 함수들 - 실제 AI가 프리셋 데이터를 분석
+ */
+export const evaluatePresetStudent = {
+  // 모범학생 데이터로 AI 실행
+  excellent: () => evaluateStudentCredit(DEMO_STUDENT_DATA["모범학생"]),
+  
+  // 위험학생 데이터로 AI 실행  
+  risky: () => evaluateStudentCredit(DEMO_STUDENT_DATA["위험학생"]),
+  
+  // 평균학생 데이터로 AI 실행
+  average: () => evaluateStudentCredit(DEMO_STUDENT_DATA["평균학생"])
+};
+
+/**
+ * 개발자 모드: 커스텀 결과 직접 반환
+ */
+export const evaluateWithCustomResult = async (
+  studentData: StudentData,
+  customResult: Partial<CreditResult>
+): Promise<CreditResult> => {
+  // 필수 조건 체크
+  if (!studentData.hasStudentCard || !studentData.hasEnrollmentCertificate) {
+    return {
+      bnplLimit: 0,
+      riskScore: 100,
+      reasons: ['학생증과 재학증명서 제출이 필수입니다'],
+      aiInsights: {
+        personalityAssessment: '기본 인증 미완료로 평가 불가',
+        riskFactors: ['필수 서류 미제출'],
+        strengths: [],
+        recommendations: '학생증과 재학증명서를 제출한 후 재평가 받으시기 바랍니다'
+      }
+    };
+  }
+
+  // 기본값과 커스텀 값 병합
+  const defaultResult: CreditResult = {
+    bnplLimit: 200000,
+    riskScore: 50,
+    reasons: ['커스텀 평가 결과'],
+    aiInsights: {
+      personalityAssessment: '커스텀 성향 분석',
+      riskFactors: ['커스텀 위험 요소'],
+      strengths: ['커스텀 강점'],
+      recommendations: '커스텀 추천사항'
+    }
+  };
+
+  return {
+    ...defaultResult,
+    ...customResult,
+    aiInsights: {
+      ...defaultResult.aiInsights,
+      ...customResult.aiInsights
+    }
+  };
+};
+
 /**
  * AI 기반 학생 신용평가 시스템
  */
-export const evaluateStudentCredit = async (studentData: StudentData): Promise<CreditResult> => {
+export const evaluateStudentCredit = async (studentData: StudentData, demoScenario?: string): Promise<CreditResult> => {
+  // 시연 모드: 특정 시나리오 사용
+  if (demoScenario) {
+    const scenario = DEMO_SCENARIOS.find(s => s.name === demoScenario);
+    if (scenario) {
+      // 필수 조건 체크는 여전히 적용
+      if (!studentData.hasStudentCard || !studentData.hasEnrollmentCertificate) {
+        return {
+          bnplLimit: 0,
+          riskScore: 100,
+          reasons: ['학생증과 재학증명서 제출이 필수입니다'],
+          aiInsights: {
+            personalityAssessment: '기본 인증 미완료로 평가 불가',
+            riskFactors: ['필수 서류 미제출'],
+            strengths: [],
+            recommendations: '학생증과 재학증명서를 제출한 후 재평가 받으시기 바랍니다'
+          }
+        };
+      }
+      
+      // 시연용 결과에 실제 학생 정보 일부 반영
+      const customizedResult = {
+        ...scenario.result,
+        reasons: [
+          ...scenario.result.reasons,
+          `${studentData.university} ${studentData.major} 전공 특성 반영`,
+          `GPA ${studentData.gpa}/4.5, 출석률 ${studentData.attendanceRate}% 고려`
+        ]
+      };
+      
+      return customizedResult;
+    }
+  }
   // AI가 필요한 복합적 판단 요소들을 프롬프트에 추가
   const complexFactorsText = buildComplexFactorsText(studentData);
   
@@ -103,7 +528,8 @@ ${complexFactorsText}
 4. **개인화된 권장사항**: 해당 학생만의 특성에 맞는 맞춤형 금융 조언
 
 기본 규칙:
-- 기본 한도: 10만원 (학생증 + 재학증명서 필수)
+- **필수 조건**: 학생증 + 재학증명서 미제출시 → 한도 0원 (절대 규칙)
+- 기본 한도: 10만원 (필수 조건 충족 시)
 - 학점/출석률/활동 보너스는 상호 보완적으로 평가
 - 최대 한도: 50만원 (AI 판단 시 30만원 제한 해제)
 
@@ -121,6 +547,21 @@ ${complexFactorsText}
 }
   `;
 
+  // 필수 조건 체크 - AI 호출 전에 확인
+  if (!studentData.hasStudentCard || !studentData.hasEnrollmentCertificate) {
+    return {
+      bnplLimit: 0,
+      riskScore: 100,
+      reasons: ['학생증과 재학증명서 제출이 필수입니다'],
+      aiInsights: {
+        personalityAssessment: '기본 인증 미완료로 평가 불가',
+        riskFactors: ['필수 서류 미제출'],
+        strengths: [],
+        recommendations: '학생증과 재학증명서를 제출한 후 재평가 받으시기 바랍니다'
+      }
+    };
+  }
+
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -134,9 +575,15 @@ ${complexFactorsText}
     
     const creditResult: CreditResult = JSON.parse(jsonMatch[0]);
     
-    // AI 평가는 더 넓은 범위 허용 (50만원까지)
-    creditResult.bnplLimit = Math.min(Math.max(creditResult.bnplLimit, 50000), 500000);
-    creditResult.riskScore = Math.min(Math.max(creditResult.riskScore, 0), 100);
+    // 필수 조건 재확인 (AI가 실수로 0원이 아닌 값을 준 경우)
+    if (!studentData.hasStudentCard || !studentData.hasEnrollmentCertificate) {
+      creditResult.bnplLimit = 0;
+      creditResult.riskScore = 100;
+    } else {
+      // AI 평가는 더 넓은 범위 허용 (50만원까지)
+      creditResult.bnplLimit = Math.min(Math.max(creditResult.bnplLimit, 50000), 500000);
+      creditResult.riskScore = Math.min(Math.max(creditResult.riskScore, 0), 100);
+    }
     
     return creditResult;
     
