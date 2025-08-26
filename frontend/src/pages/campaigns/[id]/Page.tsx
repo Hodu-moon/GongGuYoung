@@ -8,10 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BNPLSelector } from "@/components/payment/bnpl-selector";
-import { BNPLApplication } from "@/components/payment/bnpl-application";
-import { PaymentProgress } from "@/components/payment/payment-progress";
-import { calculateMonthlyPayment, type BNPLPlan } from "@/lib/bnpl-utils";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import Image from "@/compat/NextImage";
 import {
@@ -44,11 +40,7 @@ export default function CampaignDetailPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [quantity, setQuantity] = useState(1);
-  const [showPayment, setShowPayment] = useState(false);
-  const [selectedBNPLPlan, setSelectedBNPLPlan] = useState<BNPLPlan | null>(null);
-  const [showBNPLApplication, setShowBNPLApplication] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [paymentStep, setPaymentStep] = useState(1);
 
   // StrictMode 중복 호출 가드
   const fetchedForIdRef = useRef<string | null>(null);
@@ -165,27 +157,18 @@ export default function CampaignDetailPage() {
   const finalPrice = discountTotalPrice;
 
   const handleJoinCampaign = () => {
-    setShowPayment(true);
-    setPaymentStep(1);
-  };
-
-  const handlePaymentProceed = () => {
-    if (selectedBNPLPlan) {
-      setShowBNPLApplication(true);
-      setPaymentStep(2);
-    } else {
-      setPaymentStep(2);
-      setTimeout(() => {
-        router.push(`/payment/success?orderId=ORDER-${Date.now()}&method=full`);
-      }, 600);
-    }
-  };
-
-  const handleBNPLSubmit = () => {
-    setPaymentStep(3);
-    setTimeout(() => {
-      router.push(`/payment/success?orderId=ORDER-${Date.now()}&method=bnpl`);
-    }, 600);
+    // 결제 페이지로 이동하면서 필요한 정보를 URL 파라미터로 전달
+    const paymentParams = new URLSearchParams({
+      campaignId: campaign.id.toString(),
+      productName: campaign.product.name,
+      quantity: quantity.toString(),
+      originalPrice: campaign.product.originalPrice.toString(),
+      discountPrice: campaign.discountPrice.toString(),
+      finalPrice: finalPrice.toString(),
+      discountRate: getDiscountRate(campaign.targetQuantity).toString()
+    });
+    
+    router.push(`/payment?${paymentParams.toString()}`);
   };
 
   const handleDeleteCampaign = () => {
@@ -449,16 +432,7 @@ export default function CampaignDetailPage() {
             {/* Right */}
             <div className="lg:col-span-1">
               <div className="sticky top-8 space-y-6">
-                {showPayment && (
-                  <PaymentProgress
-                    currentStep={paymentStep}
-                    paymentMethod={selectedBNPLPlan ? "bnpl" : "full"}
-                  />
-                )}
-
-                {!showPayment ? (
-                  <>
-                    <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-purple-50 to-pink-50">
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-purple-50 to-pink-50">
                       <CardHeader className="text-center pb-4">
                         <div className="inline-flex items-center gap-2 bg-hey-gradient text-white px-4 py-2 rounded-full text-sm font-medium">
                           <TrendingDown className="w-4 h-4" />
@@ -554,7 +528,7 @@ export default function CampaignDetailPage() {
                               size="lg"
                               onClick={handleJoinCampaign}
                             >
-                              결제 방법 선택하기
+                              결제하기
                             </Button>
 
                             <p className="text-xs text-gray-500 text-center">
@@ -577,27 +551,17 @@ export default function CampaignDetailPage() {
                           )}
                       </CardContent>
                     </Card>
-                  </>
-                ) : !showBNPLApplication ? (
-                  <BNPLSelector
-                    totalAmount={finalPrice}
-                    onPlanSelect={setSelectedBNPLPlan}
-                    onProceed={handlePaymentProceed}
-                  />
-                ) : (
-                  selectedBNPLPlan && (
-                    <BNPLApplication
-                      plan={selectedBNPLPlan}
-                      totalAmount={finalPrice}
-                      monthlyPayment={calculateMonthlyPayment(finalPrice, selectedBNPLPlan)}
-                      onSubmit={handleBNPLSubmit}
-                      onCancel={() => {
-                        setShowBNPLApplication(false);
-                        setPaymentStep(1);
-                      }}
-                    />
-                  )
-                )}
+                    
+                    {!isPaymentAvailable &&
+                      daysLeft <= 0 &&
+                      campaign.currentQuantity < campaign.targetQuantity && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                          <p className="text-red-700 font-medium">공구가 마감되었습니다</p>
+                          <p className="text-sm text-red-600 mt-1">
+                            최소인원 미달로 결제할 수 없습니다
+                          </p>
+                        </div>
+                      )}
               </div>
             </div>
           </div>
