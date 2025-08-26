@@ -19,6 +19,7 @@ public class GlobalExceptionHandler {
         private String responseMessage;
     }
 
+
     // 이미 존재하는 ID
     @ExceptionHandler(HttpClientErrorException.BadRequest.class)
     public ResponseEntity<ErrorResponse> handleHttpClientErrorException(HttpClientErrorException exception) {
