@@ -20,7 +20,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import Image from "@/compat/NextImage";
-import { fetchBNPLRemain } from "@/api/Payment"
+import { fetchBNPLRemain, postPayment } from "@/api/Payment";
 interface PaymentInfo {
   campaignId: string;
   productName: string;
@@ -209,32 +209,91 @@ export default function PaymentPage() {
       alert("6자리 비밀번호를 입력해주세요.");
       return;
     }
+    if (!paymentInfo) {
+      alert("결제 정보가 없습니다.");
+      return;
+    }
+    // user.id는 숫자여야 합니다. (문자라면 Number(...)로 변환)
+    const memberId =
+      typeof (user as any)?.id === "number"
+        ? (user as any).id
+        : Number((user as any)?.id);
+    if (!memberId) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
 
     setIsProcessing(true);
     setCurrentStep(3);
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // 결제 처리 시뮬레이션
-    setTimeout(() => {
+    // 결제 타입/금액 계산
+    const groupPurchaseId = Number(paymentInfo.campaignId);
+    const count = paymentInfo.quantity;
+
+    let paymentType: "IMMEDIATE_ONLY" | "BNPL";
+    let immediate = 0;
+    let bnpl = 0;
+
+    if (paymentMethod === "bnpl") {
+      paymentType = "BNPL";
+      // 사용자가 선택한 BNPL 금액이 우선. 없으면 가능한 최대치 사용.
+      const chosenBnpl =
+        selectedBnplAmount > 0
+          ? selectedBnplAmount
+          : Math.min(bnplBalance, paymentInfo.finalPrice);
+
+      bnpl = Math.min(chosenBnpl, paymentInfo.finalPrice);
+      immediate = Math.max(0, paymentInfo.finalPrice - bnpl);
+    } else {
+      paymentType = "IMMEDIATE_ONLY";
+      immediate = paymentInfo.finalPrice;
+      bnpl = 0;
+    }
+
+    // 전송 payload
+    const payload = {
+      groupPurchaseId,
+      memberId,
+      count,
+      immediate,
+      bnpl,
+      paymentType,
+    } as const;
+
+    try {
+      console.log("📤 POST /api/v1/payments", payload);
+      const ok = await postPayment(payload);
       setIsProcessing(false);
-      // 결제 완료 후 성공 페이지로 이동 (실제 결제 정보 전달)
+
+      if (!ok) {
+        alert("결제에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        setCurrentStep(2); // 다시 비밀번호 단계로
+        return;
+      }
+
+      // 성공 시 성공 페이지로 이동
       const successParams = new URLSearchParams({
         orderId: `ORDER-${Date.now()}`,
         method: paymentMethod || "full",
-        amount: paymentInfo?.finalPrice.toString() || "0",
-        campaignId: paymentInfo?.campaignId || "1",
-        productName: paymentInfo?.productName || "",
-        quantity: paymentInfo?.quantity.toString() || "1",
-        // 분할 결제 정보 추가
+        amount: String(paymentInfo.finalPrice),
+        campaignId: paymentInfo.campaignId,
+        productName: paymentInfo.productName,
+        quantity: String(paymentInfo.quantity),
         ...(paymentMethod === "bnpl" && {
-          splitPayment: needsSplitPayment ? "true" : "false",
-          bnplAmount: bnplAmount.toString(),
-          cashAmount: cashAmount.toString(),
-          selectedBnplAmount: selectedBnplAmount.toString(),
+          splitPayment: (immediate > 0).toString(),
+          bnplAmount: String(bnpl),
+          cashAmount: String(immediate),
+          selectedBnplAmount: String(bnpl),
         }),
       });
       router.push(`/payment/success?${successParams.toString()}`);
-    }, 2000);
+    } catch (err) {
+      console.error("❌ 결제 오류:", err);
+      setIsProcessing(false);
+      setCurrentStep(2);
+      alert("결제 처리 중 오류가 발생했습니다.");
+    }
   };
 
   const handlePreviousStep = () => {
