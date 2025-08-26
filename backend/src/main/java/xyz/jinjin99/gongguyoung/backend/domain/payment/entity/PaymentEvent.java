@@ -56,10 +56,15 @@ public class PaymentEvent {
     private int immediateAmount;
 
     @Column
+    @Comment("수량 몇개 구입할건지 ")
+    private int count;
+
+    @Column
     @Comment("BNPL 결제 금액 - BNPL 또는 혼합일 때 값 존재")
     private int bnplAmount;
 
     @Column(nullable = false)
+    @Comment("거래 개수 ")
     private int amount;
 
     @Column(length = 50)
