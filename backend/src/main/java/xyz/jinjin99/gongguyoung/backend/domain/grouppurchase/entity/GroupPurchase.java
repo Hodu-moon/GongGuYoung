@@ -41,11 +41,11 @@ public class GroupPurchase {
     private Long discountedPrice;
 
     @Column(nullable = false)
-    private Integer targetCount;
+    private Integer targetCount; // 목표치 
 
     @Builder.Default
     @Column(nullable = false)
-    private Integer currentCount = 0;
+    private Integer currentCount = 0; // 현재 수량 
 
     @Column(nullable = false)
     private String accountNo;
@@ -73,28 +73,41 @@ public class GroupPurchase {
     @OneToMany(mappedBy = "groupPurchase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GroupPurchaseParticipant> participants = new ArrayList<>();
 
-
     public void increaseCurrentCount() {
-        this.currentCount++;
-        if (this.currentCount >= this.targetCount) {
-            this.status = GroupPurchaseStatus.COMPLETE;
-        }
+        addCurrentCount(1);
     }
 
     public void decreaseCurrentCount() {
         if (this.currentCount > 0) {
-            this.currentCount--;
-            if (this.status == GroupPurchaseStatus.COMPLETE) {
-                this.status = GroupPurchaseStatus.WAITING;
-            }
+            addCurrentCount(-1);
         }
+    }
+
+    public void addCurrentCount(int value) {
+        this.currentCount += value;
     }
 
     public void cancel() {
         this.status = GroupPurchaseStatus.CANCELLED;
     }
 
+    public void complete() {
+        this.status = GroupPurchaseStatus.COMPLETE;
+    }
+
     public void increaseViewCount() {
         this.viewCount++;
+    }
+
+    public boolean isTargetAchieved() {
+        return this.currentCount >= this.targetCount;
+    }
+
+    public void processExpiry() {
+        if (!isTargetAchieved()) {
+            this.status = GroupPurchaseStatus.CANCELLED;
+        } else {
+            this.status = GroupPurchaseStatus.COMPLETE;
+        }
     }
 }
