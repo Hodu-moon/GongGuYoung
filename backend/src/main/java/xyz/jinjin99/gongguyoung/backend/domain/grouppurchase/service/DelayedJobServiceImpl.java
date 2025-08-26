@@ -63,24 +63,27 @@ public class DelayedJobServiceImpl implements DelayedJobService {
     public void processExpiredGroupPurchase(String groupPurchaseId) {
         log.info("=== GROUP PURCHASE EXPIRED EVENT ===");
         log.info("Group Purchase ID: {}", groupPurchaseId);
-        log.info("Expired at: {}", LocalDateTime.now());
-        log.info("===================================");
 
         try {
             Long id = Long.parseLong(groupPurchaseId);
             GroupPurchase groupPurchase = groupPurchaseRepository.findById(id)
                     .orElseThrow(() -> new GroupPurchaseNotFoundException("공동구매가 존재하지 않습니다: " + groupPurchaseId));
-                    
-            groupPurchase.processExpiry();
-            if (groupPurchase.isTargetAchieved()) {
-                log.info("공동구매 목표 달성 - 승인 처리: {}", groupPurchaseId);
-            } else {
-                log.info("공동구매 목표 미달성 - 환불 처리 시작: {}", groupPurchaseId);
-                processRefundForExpiredGroupPurchase(groupPurchase);
-                log.info("공동구매 환불 처리 완료: {}", groupPurchaseId);
-            }
 
-            groupPurchaseRepository.save(groupPurchase);
+            // 1. 상태 변경을 먼저 수행 (환불 처리와 완전히 분리)
+            boolean isTargetAchieved = groupPurchase.isTargetAchieved();
+            updateGroupPurchaseStatus(groupPurchase);
+            
+            log.info("공동구매 상태 변경 완료: {} -> {}", groupPurchaseId, 
+                    isTargetAchieved ? "COMPLETE" : "CANCELLED");
+
+            // 2. 목표 미달성 시 환불 처리 (별도 트랜잭션, 실패해도 상태는 이미 변경됨)
+            if (!isTargetAchieved) {
+                log.info("공동구매 목표 미달성 - 환불 처리 시작: {}", groupPurchaseId);
+                processRefundSafely(groupPurchase);
+            } else {
+                log.info("공동구매 목표 달성 - 승인 처리 완료: {}", groupPurchaseId);
+            }
+            
         } catch (NumberFormatException e) {
             log.error("잘못된 공동구매 ID 형식: {}", groupPurchaseId, e);
         } catch (Exception e) {
@@ -89,6 +92,21 @@ public class DelayedJobServiceImpl implements DelayedJobService {
         }
 
         log.info("=== GROUP PURCHASE EXPIRED EVENT COMPLETED ===");
+    }
+    
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    private void updateGroupPurchaseStatus(GroupPurchase groupPurchase) {
+        groupPurchase.processExpiry();
+        groupPurchaseRepository.save(groupPurchase);
+    }
+    
+    private void processRefundSafely(GroupPurchase groupPurchase) {
+        try {
+            processRefundForExpiredGroupPurchase(groupPurchase);
+            log.info("공동구매 환불 처리 완료: {}", groupPurchase.getId());
+        } catch (Exception refundException) {
+            log.error("환불 처리 실패하였으나 공동구매 상태 변경은 완료됨: {}", groupPurchase.getId(), refundException);
+        }
     }
 
     private void processRefundForExpiredGroupPurchase(GroupPurchase groupPurchase) {
@@ -104,7 +122,8 @@ public class DelayedJobServiceImpl implements DelayedJobService {
                 log.info("결제 환불 완료 - PaymentEvent ID: {}, Member ID: {}",
                         payment.getId(), payment.getMember().getId());
             } catch (Exception e) {
-                log.error("결제 환불 실패 - PaymentEvent ID: {}, Member ID: {}", payment.getId(), payment.getMember().getId(), e);
+                log.error("결제 환불 실패 - PaymentEvent ID: {}, Member ID: {}", payment.getId(), payment.getMember().getId(),
+                        e);
                 throw new RuntimeException(payment.getId() + " " + payment.getMember().getId());
             }
         }

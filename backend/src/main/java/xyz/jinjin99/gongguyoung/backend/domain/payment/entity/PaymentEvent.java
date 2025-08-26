@@ -87,14 +87,29 @@ public class PaymentEvent {
 
 
     // Jpa 를 통해 save, update 하기 전에 유효성 검사 하는 로직
-    @PrePersist @PreUpdate
+    @PrePersist
+    private void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+        validate();
+    }
+    
+    @PreUpdate
+    private void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+        validate();
+    }
+    
     private void validate() {
         long i = this.immediateAmount;
         long b = this.bnplAmount;
         if (this.amount != i + b) {
             throw new IllegalStateException("amount must equal instantAmount + bnplAmount");
         }
-
     }
 
     public void markBnplStatusDONE(){
