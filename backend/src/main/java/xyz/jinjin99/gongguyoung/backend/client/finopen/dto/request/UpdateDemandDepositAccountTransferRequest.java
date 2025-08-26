@@ -12,6 +12,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 public class UpdateDemandDepositAccountTransferRequest extends BaseRequest {
+
   // 입금 계좌 번호
   private String depositAccountNo;
   // 거래 금액
