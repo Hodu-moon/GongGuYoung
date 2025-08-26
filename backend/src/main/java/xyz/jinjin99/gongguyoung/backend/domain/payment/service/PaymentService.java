@@ -41,6 +41,7 @@ public class PaymentService {
      *      3. 송금
      *      3-1 BNPL 일때 BNPL로 결제
      *      3-2 일반 결제일때 일반결제 얼마
+     *      4. groupPurchase count 올리기
      *      그 후 저장
      *      TODO 결제 에는 출금계좌, 입금계좌
      *          두개가 존재함 ->
@@ -78,14 +79,21 @@ public class PaymentService {
             default -> throw new RuntimeException("지원하지 않는 결제 타입입니다.");
         }
 
+        // 4. groupPurchase 에 수량 업데이트
+        // TODO 나중에 바꿔야함
+        for(int c = 0; c < paymentRequest.getCount(); c++)
+            groupPurchase.increaseCurrentCount();
+
+
 
         PaymentEvent paymentEvent = PaymentEvent.builder()
                 .member(member)
                 .groupPurchase(groupPurchase)
                 .type(PaymentType.valueOf(paymentRequest.getPaymentType())) // IMMEDIATE_ONLY, BNPL
                 .status(PaymentStatus.PAID)              // @Builder는 기본값 유지 안 됨: 명시!
-                .bnplStatus(BnplStatus.PROCESSING)                        // TODO: 팀 정의 상태에 맞게 설정
+                .bnplStatus(BnplStatus.PROCESSING)
                 .immediateAmount(paymentRequest.getImmediate())
+                .count(paymentRequest.getCount())
                 .bnplAmount(paymentRequest.getBnpl())
                 .amount(paymentRequest.getImmediate() + paymentRequest.getBnpl())
                 .bnplWithdrawalTransactionNo(bnplTxNo)
@@ -118,7 +126,8 @@ public class PaymentService {
 
         // 1) 계좌 정보
         // TODO: 실제 그룹공동구매 전용  이게 맞는지 잘 모르겠음
-        String groupPurchaseAccountNo = event.getGroupPurchase().getAccountNo();
+        GroupPurchase groupPurchase = event.getGroupPurchase();
+        String groupPurchaseAccountNo = groupPurchase.getAccountNo();
         MemberAccountsNo accountNos = memberService.getAccountNo(request.getMemberId());
 
         Long immediateRefundTxNo = null;
@@ -149,6 +158,13 @@ public class PaymentService {
         // 4) 상태 전이
         event.markRefund();
         paymentRepository.save(event);
+
+        // 5) 그룹 구매 카운트 내리기
+        int count = event.getCount();
+
+        for(int c = 0; c < count; c++){
+            groupPurchase.decreaseCurrentCount();
+        }
 
         return PaymentCancellationResult.builder()
                 .immediateRefundTransactionNo(immediateRefundTxNo)
