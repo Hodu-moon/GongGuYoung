@@ -127,6 +127,7 @@ public class PaymentService {
         // TODO: 실제 그룹공동구매 전용  이게 맞는지 잘 모르겠음
         GroupPurchase groupPurchase = event.getGroupPurchase();
         String groupPurchaseAccountNo = groupPurchase.getAccountNo();
+        Member member = memberService.getMember(request.getMemberId());
         MemberAccountsNo accountNos = memberService.getAccountNo(request.getMemberId());
 
         Long immediateRefundTxNo = null;
@@ -135,7 +136,7 @@ public class PaymentService {
         // 2) 환불(역이체) — 즉시결제 금액이 있으면: 그룹계좌 → 회원 Starter 계좌
         if (event.getImmediateAmount() > 0) {
             UpdateDemandDepositAccountTransferRequest reqImmediateRefund =
-                    buildImmediateRefundRequest(event, accountNos, groupPurchaseAccountNo);
+                    buildImmediateRefundRequest(member.getUserKey(), event, accountNos, groupPurchaseAccountNo);
 
             UpdateDemandDepositAccountTransferResponse resp =
                     demandDepositClient.updateDemandDepositAccountTransfer(reqImmediateRefund);
@@ -146,7 +147,7 @@ public class PaymentService {
         // 3) 환불(역이체) — BNPL 금액이 있으면: 그룹계좌 → 회원 Flex(BNPL) 계좌
         if (event.getBnplAmount() > 0) {
             UpdateDemandDepositAccountTransferRequest reqBnplRefund =
-                    buildBnplRefundRequest(event, accountNos, groupPurchaseAccountNo);
+                    buildBnplRefundRequest(member.getUserKey(), event, accountNos, groupPurchaseAccountNo);
 
             UpdateDemandDepositAccountTransferResponse resp =
                     demandDepositClient.updateDemandDepositAccountTransfer(reqBnplRefund);
@@ -170,9 +171,11 @@ public class PaymentService {
 
     /** 즉시결제 환불: 그룹공동구매계좌 → 회원 Starter 계좌 */
     private UpdateDemandDepositAccountTransferRequest buildImmediateRefundRequest(
+            String userKey,
             PaymentEvent event, MemberAccountsNo accountNos, String groupPurchaseAccountNo
     ) {
         return UpdateDemandDepositAccountTransferRequest.builder()
+                .header(BaseRequest.Header.builder().userKey(userKey).build())
                 .withdrawalAccountNo(groupPurchaseAccountNo)                 // 그룹계좌에서 출금
                 .depositAccountNo(accountNos.getStarterAccountNo())          // 회원 Starter 계좌로 입금
                 .transactionBalance((long) event.getImmediateAmount())
@@ -187,9 +190,11 @@ public class PaymentService {
 
     /** BNPL 환불: 그룹공동구매계좌 → 회원 Flex(BNPL) 계좌 */
     private UpdateDemandDepositAccountTransferRequest buildBnplRefundRequest(
+            String userKey,
             PaymentEvent event, MemberAccountsNo accountNos, String groupPurchaseAccountNo
     ) {
         return UpdateDemandDepositAccountTransferRequest.builder()
+                .header(BaseRequest.Header.builder().userKey(userKey).build())
                 .withdrawalAccountNo(groupPurchaseAccountNo)             // 그룹계좌에서 출금
                 .depositAccountNo(accountNos.getFlexAccountNo())         // 회원 BNPL(Flex) 계좌로 입금
                 .transactionBalance((long) event.getBnplAmount())
