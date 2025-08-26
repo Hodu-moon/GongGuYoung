@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export interface StudentData {
   // 기본 정보
@@ -25,25 +25,63 @@ export interface StudentData {
   hasStudentCard: boolean;
   hasEnrollmentCertificate: boolean;
   parentConsent: boolean;
+  
+  // AI 특화 판단 요소들
+  previousBnplUsage?: {
+    totalUsed: number;
+    onTimePayments: number;
+    latePayments: number;
+    averagePaymentDelay: number; // 일 단위
+  };
+  socialMediaActivity?: {
+    hasLinkedIn: boolean;
+    hasInstagram: boolean;
+    postFrequency: 'high' | 'medium' | 'low' | 'none';
+    professionalContent: boolean;
+  };
+  campusEngagement?: {
+    libraryUsageHours: number; // 월 평균
+    cafeteriaSpending: number; // 월 평균
+    eventParticipation: number; // 학기당 참여 횟수
+    studyGroupActivity: boolean;
+  };
+  financialBehavior?: {
+    hasPartTimeJob: boolean;
+    monthlyIncome: number;
+    savingsAccount: boolean;
+    creditCardUsage: 'heavy' | 'moderate' | 'light' | 'none';
+  };
+  personalityTraits?: {
+    responses: string[]; // 간단한 성향 질문 답변들
+  };
 }
 
 export interface CreditResult {
   bnplLimit: number;
   riskScore: number; // 0-100 (낮을수록 안전)
   reasons: string[];
+  aiInsights?: {
+    personalityAssessment: string;
+    riskFactors: string[];
+    strengths: string[];
+    recommendations: string;
+  };
 }
 
 /**
  * AI 기반 학생 신용평가 시스템
  */
 export const evaluateStudentCredit = async (studentData: StudentData): Promise<CreditResult> => {
+  // AI가 필요한 복합적 판단 요소들을 프롬프트에 추가
+  const complexFactorsText = buildComplexFactorsText(studentData);
+  
   const prompt = `
-다음 학생 데이터를 기반으로 BNPL(선구매 후결제) 한도를 평가해주세요.
+당신은 학생 신용평가 전문가입니다. 다음 학생 데이터를 종합적으로 분석하여 BNPL 한도를 평가해주세요.
 
-학생 정보:
+=== 기본 학생 정보 ===
 - 대학: ${studentData.university}
-- 전공: ${studentData.major}
-- 학기: ${studentData.semester}
+- 전공: ${studentData.major} (전공별 취업률과 소득 수준을 고려하세요)
+- 학기: ${studentData.semester} (졸업 임박 여부가 신용도에 미치는 영향 분석)
 - 평균 학점: ${studentData.gpa}/4.5
 - 이수 학점: ${studentData.totalCredits}
 - 출석률: ${studentData.attendanceRate}%
@@ -54,23 +92,32 @@ export const evaluateStudentCredit = async (studentData: StudentData): Promise<C
 - 재학증명서: ${studentData.hasEnrollmentCertificate ? '제출' : '미제출'}
 - 부모 동의: ${studentData.parentConsent ? '완료' : '미완료'}
 
-평가 기준:
-1. 기본 한도: 10만원 (학생증 + 재학증명서 필수)
-2. 학점 보너스: 3.5 이상 (+10만원), 4.0 이상 (+15만원)
-3. 출석률 보너스: 90% 이상 (+5만원), 95% 이상 (+7만원)
-4. 활동 보너스: 장학금(+3만원), 학생회(+2만원), 동아리(+1만원)
-5. 부모 동의 보너스: +5만원
-6. 최대 한도: 30만원
+${complexFactorsText}
 
-위험도 평가 (0-100, 낮을수록 안전):
-- 낮은 학점, 낮은 출석률 → 위험도 상승
-- 활동 부족, 인증 미완료 → 위험도 상승
+=== AI 전문가로서의 종합 판단 요청 ===
+다음 복합적 요소들을 AI의 패턴 인식 능력으로 분석해주세요:
 
-다음 JSON 형식으로만 응답해주세요:
+1. **전공-성향-소비패턴 연관성**: 전공과 개인 성향, 소비 패턴 간의 상관관계
+2. **다면적 리스크 평가**: 단순 합산이 아닌 요소 간 상호작용 분석
+3. **미래 변화 예측**: 현재 데이터로부터 미래 상환 능력 변화 예측
+4. **개인화된 권장사항**: 해당 학생만의 특성에 맞는 맞춤형 금융 조언
+
+기본 규칙:
+- 기본 한도: 10만원 (학생증 + 재학증명서 필수)
+- 학점/출석률/활동 보너스는 상호 보완적으로 평가
+- 최대 한도: 50만원 (AI 판단 시 30만원 제한 해제)
+
+다음 JSON 형식으로 응답해주세요:
 {
   "bnplLimit": 한도금액(숫자),
   "riskScore": 위험도점수(숫자),
-  "reasons": ["평가 근거1", "평가 근거2", "평가 근거3"]
+  "reasons": ["AI 판단 근거1", "AI 판단 근거2", "AI 판단 근거3"],
+  "aiInsights": {
+    "personalityAssessment": "성향 분석 결과",
+    "riskFactors": ["주요 위험 요소들"],
+    "strengths": ["강점 요소들"],
+    "recommendations": "개인화된 금융 조언"
+  }
 }
   `;
 
@@ -87,8 +134,8 @@ export const evaluateStudentCredit = async (studentData: StudentData): Promise<C
     
     const creditResult: CreditResult = JSON.parse(jsonMatch[0]);
     
-    // 안전장치: 최대/최소 한도 제한
-    creditResult.bnplLimit = Math.min(Math.max(creditResult.bnplLimit, 50000), 300000);
+    // AI 평가는 더 넓은 범위 허용 (50만원까지)
+    creditResult.bnplLimit = Math.min(Math.max(creditResult.bnplLimit, 50000), 500000);
     creditResult.riskScore = Math.min(Math.max(creditResult.riskScore, 0), 100);
     
     return creditResult;
@@ -99,6 +146,77 @@ export const evaluateStudentCredit = async (studentData: StudentData): Promise<C
     // 폴백: 기본 규칙 기반 평가
     return fallbackCreditEvaluation(studentData);
   }
+};
+
+/**
+ * AI가 분석해야 할 복합적 요소들을 텍스트로 구성
+ */
+const buildComplexFactorsText = (studentData: StudentData): string => {
+  let text = "\n=== AI 특화 분석 데이터 ===\n";
+  
+  if (studentData.previousBnplUsage) {
+    const { totalUsed, onTimePayments, latePayments, averagePaymentDelay } = studentData.previousBnplUsage;
+    const successRate = totalUsed > 0 ? (onTimePayments / totalUsed * 100).toFixed(1) : '0';
+    text += `
+**이전 BNPL 사용 이력** (AI 패턴 분석 필요):
+- 총 사용 횟수: ${totalUsed}회
+- 정시 상환: ${onTimePayments}회 (성공률: ${successRate}%)
+- 연체: ${latePayments}회
+- 평균 연체 일수: ${averagePaymentDelay}일
+→ AI 분석: 사용 패턴에서 신용도 트렌드 예측`;
+  }
+  
+  if (studentData.socialMediaActivity) {
+    const { hasLinkedIn, hasInstagram, postFrequency, professionalContent } = studentData.socialMediaActivity;
+    text += `
+
+**소셜미디어 활동 패턴** (AI 성향 분석):
+- LinkedIn: ${hasLinkedIn ? '있음' : '없음'}
+- Instagram: ${hasInstagram ? '있음' : '없음'}  
+- 게시 빈도: ${postFrequency}
+- 전문성 콘텐츠: ${professionalContent ? '있음' : '없음'}
+→ AI 분석: 디지털 발자국을 통한 책임감/미래지향성 평가`;
+  }
+  
+  if (studentData.campusEngagement) {
+    const { libraryUsageHours, cafeteriaSpending, eventParticipation, studyGroupActivity } = studentData.campusEngagement;
+    text += `
+
+**캠퍼스 참여도** (AI 라이프스타일 분석):
+- 도서관 이용시간: 월 ${libraryUsageHours}시간
+- 식당 지출: 월 ${cafeteriaSpending.toLocaleString()}원
+- 행사 참여: 학기당 ${eventParticipation}회
+- 스터디 그룹: ${studyGroupActivity ? '참여중' : '미참여'}
+→ AI 분석: 학업 몰입도와 사회적 책임감의 상관관계`;
+  }
+  
+  if (studentData.financialBehavior) {
+    const { hasPartTimeJob, monthlyIncome, savingsAccount, creditCardUsage } = studentData.financialBehavior;
+    text += `
+
+**금융 행동 패턴** (AI 리스크 예측):
+- 아르바이트: ${hasPartTimeJob ? '있음' : '없음'}
+- 월 소득: ${monthlyIncome.toLocaleString()}원
+- 적금 계좌: ${savingsAccount ? '보유' : '미보유'}
+- 신용카드 사용: ${creditCardUsage}
+→ AI 분석: 소득-지출-저축 균형을 통한 금융 성숙도 평가`;
+  }
+  
+  if (studentData.personalityTraits?.responses.length) {
+    text += `
+
+**성향 질문 답변** (AI 심리 분석):
+${studentData.personalityTraits.responses.map((response, index) => 
+  `- 질문 ${index + 1}: "${response}"`
+).join('\n')}
+→ AI 분석: 언어 패턴과 가치관을 통한 신뢰도 평가`;
+  }
+  
+  if (text === "\n=== AI 특화 분석 데이터 ===\n") {
+    text += "\n(추가 데이터 없음 - 기본 정보만으로 AI 패턴 분석 수행)";
+  }
+  
+  return text;
 };
 
 /**
