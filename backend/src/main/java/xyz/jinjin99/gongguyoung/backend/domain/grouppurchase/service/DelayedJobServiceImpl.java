@@ -13,7 +13,6 @@ import xyz.jinjin99.gongguyoung.backend.domain.payment.repository.PaymentReposit
 import xyz.jinjin99.gongguyoung.backend.domain.payment.service.PaymentService;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.request.PaymentCancellationRequest;
 import xyz.jinjin99.gongguyoung.backend.global.exception.GroupPurchaseNotFoundException;
-import xyz.jinjin99.gongguyoung.backend.global.exception.PaymentRefundException;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -71,7 +70,8 @@ public class DelayedJobServiceImpl implements DelayedJobService {
             Long id = Long.parseLong(groupPurchaseId);
             GroupPurchase groupPurchase = groupPurchaseRepository.findById(id)
                     .orElseThrow(() -> new GroupPurchaseNotFoundException("공동구매가 존재하지 않습니다: " + groupPurchaseId));
-
+                    
+            groupPurchase.processExpiry();
             if (groupPurchase.isTargetAchieved()) {
                 log.info("공동구매 목표 달성 - 승인 처리: {}", groupPurchaseId);
             } else {
@@ -80,7 +80,6 @@ public class DelayedJobServiceImpl implements DelayedJobService {
                 log.info("공동구매 환불 처리 완료: {}", groupPurchaseId);
             }
 
-            groupPurchase.processExpiry();
             groupPurchaseRepository.save(groupPurchase);
         } catch (NumberFormatException e) {
             log.error("잘못된 공동구매 ID 형식: {}", groupPurchaseId, e);
@@ -105,9 +104,8 @@ public class DelayedJobServiceImpl implements DelayedJobService {
                 log.info("결제 환불 완료 - PaymentEvent ID: {}, Member ID: {}",
                         payment.getId(), payment.getMember().getId());
             } catch (Exception e) {
-                log.error("결제 환불 실패 - PaymentEvent ID: {}, Member ID: {}",
-                        payment.getId(), payment.getMember().getId(), e);
-                throw new PaymentRefundException(payment.getId(), payment.getMember().getId());
+                log.error("결제 환불 실패 - PaymentEvent ID: {}, Member ID: {}", payment.getId(), payment.getMember().getId(), e);
+                throw new RuntimeException(payment.getId() + " " + payment.getMember().getId());
             }
         }
     }

@@ -83,11 +83,7 @@ public class PaymentService {
         }
 
         // 4. groupPurchase 에 수량 업데이트
-        // TODO 나중에 바꿔야함
-        for(int c = 0; c < paymentRequest.getCount(); c++)
-            groupPurchase.increaseCurrentCount();
-
-
+        groupPurchase.addCurrentCount(paymentRequest.getCount());
 
         PaymentEvent paymentEvent = PaymentEvent.builder()
                 .member(member)
@@ -163,11 +159,7 @@ public class PaymentService {
         paymentRepository.save(event);
 
         // 5) 그룹 구매 카운트 내리기
-        int count = event.getCount();
-
-        for(int c = 0; c < count; c++){
-            groupPurchase.decreaseCurrentCount();
-        }
+        groupPurchase.addCurrentCount(-event.getCount());
 
         return PaymentCancellationResult.builder()
                 .immediateRefundTransactionNo(immediateRefundTxNo)
