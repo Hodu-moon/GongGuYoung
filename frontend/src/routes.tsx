@@ -14,7 +14,8 @@ const Page10 = React.lazy(() => import("@/pages/my-page/Page"));
 const Page11 = React.lazy(() => import("@/pages/notifications/Page"));
 const Page12 = React.lazy(() => import("@/pages/notifications/settings/Page"));
 const Page13 = React.lazy(() => import("@/pages/Page"));
-const Page14 = React.lazy(() => import("@/pages/payment/success/Page"));
+const Page14 = React.lazy(() => import("@/pages/payment/Page"));
+const Page15 = React.lazy(() => import("@/pages/payment/success/Page"));
 export const AppRoutes = (
   <>
     <Route
@@ -130,11 +131,19 @@ export const AppRoutes = (
       )}
     />
     <Route
-      path="/payment/success"
+      path="/payment"
       element={React.createElement(
         React.Suspense,
         { fallback: null },
         React.createElement(Page14)
+      )}
+    />
+    <Route
+      path="/payment/success"
+      element={React.createElement(
+        React.Suspense,
+        { fallback: null },
+        React.createElement(Page15)
       )}
     />
   </>
