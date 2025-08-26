@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.request.PayBNPLRequest;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.request.PaymentCancellationRequest;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.request.PaymentRequest;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.response.BNPLRemainResponse;
@@ -52,8 +53,6 @@ public class PaymentController {
         return ResponseEntity.ok(list);
     }
 
-    // TODO 돈갚기
-
     @GetMapping("/bnpl")
     @Operation(summary = "BNPL 잔액 조회", description = "BNPL 잔액 조회")
     public ResponseEntity<BNPLRemainResponse> getBNPLRemain(
@@ -65,4 +64,18 @@ public class PaymentController {
         BNPLRemainResponse bnplRemain = bnplService.getBNPLRemain(memberId);
         return ResponseEntity.ok(bnplRemain);
     }
+
+    @PostMapping("/bnpl")
+    @Operation(summary = "bnpl 갚기 ", description = "bnpl 돈 갚기 ")
+    public ResponseEntity<String> payBnpl(
+            @Valid
+            @RequestBody
+            PayBNPLRequest request
+    ){
+        bnplService.payBnpl(request.getPaymentId(), request.getMemberId());
+        return ResponseEntity.ok("성공적으로 처리 되었습니다.");
+    }
+
+
+
 }
