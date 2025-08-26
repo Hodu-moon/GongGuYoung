@@ -28,7 +28,10 @@ export interface RefundPost{
     paymentEventId:number;
     memberId:number;
 }
-
+export interface BnplRePay{
+    paymentId:number;
+    memberId:number;
+}
 
 const API_BASE_URL = "/api/v1/payments";
 
@@ -82,6 +85,18 @@ export async function postRefund(refundData:RefundPost):Promise<boolean>{
         return response.status === 200;
     } catch (error) {
         console.error("Failed to post refund:", error);
+        return false;
+    }
+}
+
+
+export async function postBnplRepay(repayData:BnplRePay):Promise<boolean>{
+    try{
+        const response = await api.post(`${API_BASE_URL}/bnpl`,repayData);
+        console.log("BNPL 상환 요청 ", response);
+        return response.status === 200;
+    }catch(error){
+        console.error("Failed to post BNPL repay:", error);
         return false;
     }
 }
