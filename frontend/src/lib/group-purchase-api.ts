@@ -170,7 +170,11 @@ export class GroupPurchaseApi {
   static async getGroupPurchaseById(id: string): Promise<UICampaign | null> {
     try {
       const res = await api.get<GroupPurchaseData>(
-        `${API_BASE_URL}/group-purchase/${id}`
+        `${API_BASE_URL}/group-purchase/${id}`,{
+          params:{
+            increaseViewCount:true,
+          }
+        }
       );
       console.log("단건 조회",res);
       return this.adaptToUI(res.data);
