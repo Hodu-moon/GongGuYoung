@@ -141,10 +141,10 @@ public class MemberService {
                 .email(request.getEmail())
                 .password(encodedPassword)
                 .userKey(userKey)
+                .bnplLimit(100000)
                 .starterAccountNo(starterAccountNo)
                 .flexAccountNo(bnplAccountNo)
                 .build();
-
 
         Member saved = memberRepository.save(member);
 
