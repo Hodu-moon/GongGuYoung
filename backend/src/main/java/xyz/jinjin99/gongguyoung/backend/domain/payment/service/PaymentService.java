@@ -63,6 +63,17 @@ public class PaymentService {
         // 1. 공동구매 ID로 계좌번호가져오기 -> 덕종이형 진행중
 
 
+
+        if ("IMMEDIATE_ONLY".equals(paymentRequest.getPaymentType())) {
+            if (paymentRequest.getImmediate() <= 0 || paymentRequest.getBnpl() != 0) {
+                throw new IllegalArgumentException("IMMEDIATE_ONLY 결제는 immediate > 0, bnpl == 0 이어야 합니다.");
+            }
+        } else if ("BNPL".equals(paymentRequest.getPaymentType())) {
+            if (paymentRequest.getImmediate() < 0 || paymentRequest.getBnpl() <= 0) {
+                throw new IllegalArgumentException("BNPL 결제는 immediate >= 0, bnpl > 0 이어야 합니다.");
+            }
+        }
+
         GroupPurchase groupPurchase = groupPurchaseRepository.findById(paymentRequest.getGroupPurchaseId()).orElseThrow();
         String groupPurchaseAccountNo = groupPurchase.getAccountNo();
 
