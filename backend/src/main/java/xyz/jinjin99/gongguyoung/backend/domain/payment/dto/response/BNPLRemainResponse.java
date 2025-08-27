@@ -12,4 +12,7 @@ public class BNPLRemainResponse {
     private Long memberId;
     @Schema(description = "BNPL 잔액")
     private Long remain;
+
+    @Schema(description = "BNPL 한도 ")
+    private Long bnplLimit;
 }
