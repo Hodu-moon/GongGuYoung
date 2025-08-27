@@ -7,8 +7,11 @@ import { Checkbox } from '../ui/checkbox';
 import { evaluateStudentCredit, StudentData, CreditResult } from '../../lib/student-credit-ai';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
+import { updateBnplLimit } from '../../api/Payment';
+import { useAuth } from '../../lib/auth-context';
 
 export const CreditEvaluationForm: React.FC = () => {
+  const { user } = useAuth();
   const [studentData, setStudentData] = useState<StudentData>({
     studentId: '',
     university: '',
@@ -57,6 +60,7 @@ export const CreditEvaluationForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [personalityInput, setPersonalityInput] = useState('');
+  const [limitUpdated, setLimitUpdated] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +69,27 @@ export const CreditEvaluationForm: React.FC = () => {
     try {
       const creditResult = await evaluateStudentCredit(studentData);
       setResult(creditResult);
+      
+      // BNPL 한도가 0보다 크고 사용자가 있을 때만 한도 업데이트
+      if (creditResult.bnplLimit > 0 && user?.id) {
+        try {
+          const updateSuccess = await updateBnplLimit({
+            memberId: user.id,
+            newLimit: creditResult.bnplLimit
+          });
+          
+          if (updateSuccess) {
+            console.log('BNPL 한도가 업데이트되었습니다:', creditResult.bnplLimit);
+            setLimitUpdated(true);
+          } else {
+            console.warn('BNPL 한도 업데이트 실패');
+            setLimitUpdated(false);
+          }
+        } catch (limitUpdateError) {
+          console.error('BNPL 한도 업데이트 오류:', limitUpdateError);
+          // 한도 업데이트 실패해도 평가 결과는 보여줌
+        }
+      }
     } catch (error) {
       console.error('평가 실패:', error);
       alert('평가 중 오류가 발생했습니다.');
@@ -536,6 +561,21 @@ export const CreditEvaluationForm: React.FC = () => {
                   {result.bnplLimit.toLocaleString()}원
                 </div>
                 <div className="text-sm text-gray-500">승인된 BNPL 한도</div>
+                {limitUpdated && result.bnplLimit > 0 && (
+                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-sm text-green-700 font-medium">
+                      ✅ BNPL 한도가 성공적으로 업데이트되었습니다!
+                    </div>
+                    <div className="text-xs text-green-600 mt-1">
+                      이제 공동구매에서 새로운 한도를 사용할 수 있습니다.
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2">
+                      한도 구성: 기본 10만원
+                      {result.bnplLimit > 100000 && ' + 활동 보너스 ' + Math.min(result.bnplLimit - 100000, 200000).toLocaleString() + '원'}
+                      {result.bnplLimit > 300000 && ' + AI 보너스 ' + (result.bnplLimit - 300000).toLocaleString() + '원'}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded">

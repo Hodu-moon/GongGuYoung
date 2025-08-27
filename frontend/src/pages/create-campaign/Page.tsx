@@ -441,8 +441,7 @@ export default function CreateCampaignPage() {
                         <div className="text-center">
                           <h4 className="font-semibold text-gray-800 mb-2">{product.name}</h4>
                           <p className="text-sm text-gray-600 mb-3 h-10">{product.description}</p>
-                          <div className="flex items-center justify-center gap-2">
-                            <DollarSign className="w-4 h-4 text-green-600" />
+                          <div className="flex items-center justify-center">
                             <span className="text-lg font-bold text-green-600">
                               {product.price.toLocaleString()}원
                             </span>
