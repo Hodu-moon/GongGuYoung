@@ -3,6 +3,7 @@ package xyz.jinjin99.gongguyoung.backend.domain.payment.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.client.DemandDepositClient;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.BaseRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.InquireDemandDepositAccountBalanceRequest;
@@ -57,6 +58,7 @@ public class BnplService {
     // PaymentType
     // BNPL 안끝났으면 얼마 내야 하는지
 
+    @Transactional
     public List<ProcessingBnplResponse> listProcessBnplPayments(Long memberId){
 
         List<ProcessingBnplResponse> list = listProcessBnplPaymentsV1(memberId);
@@ -126,6 +128,7 @@ public class BnplService {
     }
 
     private List<ProcessingBnplResponse> listProcessBnplPaymentsV1(Long memberId){
+
         List<PaymentEvent> paymentEvents = paymentRepository.findByMemberId(memberId);
 
         List<ProcessingBnplResponse> lists = new ArrayList<>();
