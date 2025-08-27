@@ -34,6 +34,11 @@ export interface BnplRePay{
     memberId:number;
 }
 
+export interface RemainAccount{
+    memberId:number;
+    starterBalance:number;
+}
+
 const API_BASE_URL = "/api/v1/payments";
 
 export async function fetchBNPLRemain(memberId:number):Promise<BNPLRemain|null>{
@@ -102,6 +107,17 @@ export async function postBnplRepay(repayData:BnplRePay):Promise<boolean>{
     }
 }
 
+export async function fetchRemainAccount(memberId:number):Promise<RemainAccount|null>{
+    try {
+        const response = await api.get(`/api/v1/members/${memberId}/starter-balance`);
+        console.log("회원 잔액 정보:", response);
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch remain account:", error);
+        return null;
+    }
+}
+
 export interface BnplLimitUpdate{
     memberId: number;
     newLimit: number;
@@ -117,5 +133,6 @@ export async function updateBnplLimit(limitData: BnplLimitUpdate): Promise<boole
     }catch(error){
         console.error("Failed to update BNPL limit:", error);
         return false;
+     
     }
 }

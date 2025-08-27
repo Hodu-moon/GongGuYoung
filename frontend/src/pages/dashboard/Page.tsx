@@ -71,7 +71,6 @@ function RankEmblem({ rank }: { rank: number }) {
       title={`${rank}위`}
     >
       <Trophy className={`w-5 h-5 ${s.icon}`} />
-
     </div>
   );
 }
@@ -435,7 +434,15 @@ export default function DashboardPage() {
                                     NEW
                                   </Badge>
                                   <p className="text-sm font-bold text-purple-700">
-                                    {campaign.discountPrice.toLocaleString()}원
+                                    {(
+                                      campaign.discountPrice *
+                                      (100 -
+                                        getDiscountRate(
+                                          campaign.targetQuantity
+                                        )) *
+                                      0.01
+                                    ).toLocaleString()}
+                                    원
                                   </p>
                                 </div>
                               </div>
