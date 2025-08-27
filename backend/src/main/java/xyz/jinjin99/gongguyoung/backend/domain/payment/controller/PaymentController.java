@@ -30,7 +30,7 @@ public class PaymentController {
     private final BnplService bnplService;
 
     @PostMapping
-    @Operation(summary = "공동구매 결제 참여 ", description = "회원이 공동구매 참여하여 결제한다. 초기데이터가 없어서 example 에는 값이 안들어가있어요 추후에 고칠게요")
+    @Operation(summary = "공동구매 결제 참여 ", description = "회원이 공동구매 참여하여 결제한다.  payment type = \"IMMEDIATE_ONLY\", \"BNPL\" 초기데이터가 없어서 example 에는 값이 안들어가있어요 추후에 고칠게요")
     public ResponseEntity<?> processPayment(@Valid @RequestBody PaymentRequest request) {
         paymentService.processPayment(request);
         return ResponseEntity.ok("성공적으로 참여했습니다.");

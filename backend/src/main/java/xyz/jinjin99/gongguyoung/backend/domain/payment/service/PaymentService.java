@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.client.DemandDepositClient;
+import xyz.jinjin99.gongguyoung.backend.client.finopen.client.MemberClient;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.BaseRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.UpdateDemandDepositAccountTransferRequest;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.UpdateDemandDepositAccountTransferResponse;
@@ -23,7 +24,10 @@ import xyz.jinjin99.gongguyoung.backend.domain.payment.repository.PaymentReposit
 import xyz.jinjin99.gongguyoung.backend.global.enums.BnplStatus;
 import xyz.jinjin99.gongguyoung.backend.global.enums.PaymentStatus;
 import xyz.jinjin99.gongguyoung.backend.global.enums.PaymentType;
+import xyz.jinjin99.gongguyoung.backend.global.exception.MemberCreationException;
 import xyz.jinjin99.gongguyoung.backend.global.utils.TransactionSummaryUtil;
+
+import java.util.Optional;
 
 
 @Service
@@ -34,7 +38,11 @@ public class PaymentService {
     private final MemberService memberService;
     private final DemandDepositClient demandDepositClient;
     private final PaymentRepository paymentRepository;
+    private final MemberClient memberClient;
     private final GroupPurchaseRepository groupPurchaseRepository;
+
+
+    private final String GROUP_PURCHASE_EMAIL = "gongguyoung@jinjin99.xyz";
 
     /**
      *      1. 공동구매 ID로 계좌번호가져오기
@@ -54,6 +62,17 @@ public class PaymentService {
     public void processPayment(PaymentRequest paymentRequest){
         // 1. 공동구매 ID로 계좌번호가져오기 -> 덕종이형 진행중
 
+
+
+        if ("IMMEDIATE_ONLY".equals(paymentRequest.getPaymentType())) {
+            if (paymentRequest.getImmediate() <= 0 || paymentRequest.getBnpl() != 0) {
+                throw new IllegalArgumentException("IMMEDIATE_ONLY 결제는 immediate > 0, bnpl == 0 이어야 합니다.");
+            }
+        } else if ("BNPL".equals(paymentRequest.getPaymentType())) {
+            if (paymentRequest.getImmediate() < 0 || paymentRequest.getBnpl() <= 0) {
+                throw new IllegalArgumentException("BNPL 결제는 immediate >= 0, bnpl > 0 이어야 합니다.");
+            }
+        }
 
         GroupPurchase groupPurchase = groupPurchaseRepository.findById(paymentRequest.getGroupPurchaseId()).orElseThrow();
         String groupPurchaseAccountNo = groupPurchase.getAccountNo();
@@ -104,6 +123,20 @@ public class PaymentService {
         paymentRepository.save(paymentEvent);
     }
 
+    private String getGroupPurchaseUserKey(){
+        String userKey;
+        try {
+            userKey = Optional.ofNullable(memberClient.getOrCreateMember(GROUP_PURCHASE_EMAIL).getUserKey())
+                    .orElseThrow(() -> new MemberCreationException(
+                            "Member creation returned null userKey for email: " + GROUP_PURCHASE_EMAIL));
+        } catch (Exception e) {
+            throw new MemberCreationException("Failed to create member with email: " + GROUP_PURCHASE_EMAIL, e);
+        }
+
+
+        return userKey;
+    }
+
 
     @Transactional
     public PaymentCancellationResult refundPayment(PaymentCancellationRequest request) {
@@ -122,6 +155,10 @@ public class PaymentService {
 
         // (선택) 공동구매 상태로 취소 가능 여부 체크
 
+        // group purchase 계좌에도 손을 대야해서
+        String groupPurchaseUserKey = getGroupPurchaseUserKey();
+
+
 
         // 1) 계좌 정보
         // TODO: 실제 그룹공동구매 전용  이게 맞는지 잘 모르겠음
@@ -136,7 +173,7 @@ public class PaymentService {
         // 2) 환불(역이체) — 즉시결제 금액이 있으면: 그룹계좌 → 회원 Starter 계좌
         if (event.getImmediateAmount() > 0) {
             UpdateDemandDepositAccountTransferRequest reqImmediateRefund =
-                    buildImmediateRefundRequest(member.getUserKey(), event, accountNos, groupPurchaseAccountNo);
+                    buildImmediateRefundRequest( groupPurchaseUserKey, event, accountNos, groupPurchaseAccountNo);
 
             UpdateDemandDepositAccountTransferResponse resp =
                     demandDepositClient.updateDemandDepositAccountTransfer(reqImmediateRefund);
@@ -147,7 +184,7 @@ public class PaymentService {
         // 3) 환불(역이체) — BNPL 금액이 있으면: 그룹계좌 → 회원 Flex(BNPL) 계좌
         if (event.getBnplAmount() > 0) {
             UpdateDemandDepositAccountTransferRequest reqBnplRefund =
-                    buildBnplRefundRequest(member.getUserKey(), event, accountNos, groupPurchaseAccountNo);
+                    buildBnplRefundRequest(groupPurchaseUserKey, event, accountNos, groupPurchaseAccountNo);
 
             UpdateDemandDepositAccountTransferResponse resp =
                     demandDepositClient.updateDemandDepositAccountTransfer(reqBnplRefund);
@@ -171,11 +208,11 @@ public class PaymentService {
 
     /** 즉시결제 환불: 그룹공동구매계좌 → 회원 Starter 계좌 */
     private UpdateDemandDepositAccountTransferRequest buildImmediateRefundRequest(
-            String userKey,
+            String groupPurchaseUserKey,
             PaymentEvent event, MemberAccountsNo accountNos, String groupPurchaseAccountNo
     ) {
         return UpdateDemandDepositAccountTransferRequest.builder()
-                .header(BaseRequest.Header.builder().userKey(userKey).build())
+                .header(BaseRequest.Header.builder().userKey(groupPurchaseUserKey).build())
                 .withdrawalAccountNo(groupPurchaseAccountNo)                 // 그룹계좌에서 출금
                 .depositAccountNo(accountNos.getStarterAccountNo())          // 회원 Starter 계좌로 입금
                 .transactionBalance((long) event.getImmediateAmount())

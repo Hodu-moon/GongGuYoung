@@ -36,4 +36,5 @@ public class PaymentRequest {
     @Schema(description = "결제 타입", example = "BNPL", allowableValues = {"IMMEDIATE_ONLY", "BNPL"})
     @NotBlank(message = "결제 타입은 필수입니다.")
     private String paymentType;
+
 }
