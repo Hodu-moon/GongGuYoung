@@ -158,7 +158,7 @@ export default function CampaignDetailPage() {
 
   const progressPercentage =
     campaign.targetQuantity > 0
-      ? (campaign.currentQuantity / campaign.targetQuantity) * 100
+      ? Math.min((campaign.currentQuantity / campaign.targetQuantity) * 100,100)
       : 0;
 
   const discountPercentage = Math.round(
