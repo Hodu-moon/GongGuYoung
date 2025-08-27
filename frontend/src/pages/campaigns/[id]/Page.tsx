@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "@/compat/navigation";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useAuth } from "@/lib/auth-context";
@@ -30,6 +30,39 @@ import {
 import { useParams, Link } from "react-router-dom";
 import { GroupPurchaseApi, type UICampaign } from "@/lib/group-purchase-api";
 
+/** ---------- 전역(모듈 스코프) 디중복 캐시 ---------- */
+// 같은 id로 StrictMode에서 재마운트돼도 캐시는 유지됩니다.
+const inFlight = new Map<string, Promise<UICampaign | null>>();
+const dataCache = new Map<string, UICampaign | null>();
+
+function fetchCampaignOnce(id: string) {
+  // 이미 받아둔 데이터가 있으면 즉시 resolve
+  if (dataCache.has(id)) {
+    return Promise.resolve(dataCache.get(id) ?? null);
+  }
+  // 진행 중 요청이 있으면 그걸 그대로 사용
+  if (inFlight.has(id)) {
+    return inFlight.get(id)!;
+  }
+  // 새 요청 생성
+  const p = GroupPurchaseApi.getGroupPurchaseById(id)
+    .then((data) => {
+      const safe = data ?? null;
+      dataCache.set(id, safe); // 결과 캐싱
+      return safe;
+    })
+    .catch(() => {
+      // 에러는 컴포넌트에서 처리
+      throw new Error("fetch-failed");
+    })
+    .finally(() => {
+      inFlight.delete(id); // 완료되면 inFlight 제거
+    });
+
+  inFlight.set(id, p);
+  return p;
+}
+
 export default function CampaignDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -41,9 +74,6 @@ export default function CampaignDetailPage() {
 
   const [quantity, setQuantity] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // StrictMode 중복 호출 가드
-  const fetchedForIdRef = useRef<string | null>(null);
 
   // 할인율 정책
   function getDiscountRate(targetQuantity: number): number {
@@ -62,7 +92,7 @@ export default function CampaignDetailPage() {
     }
   }, [params.id, router]);
 
-  // 마운트 시 상세 API 호출
+  // 상세 API 호출 (전역 캐시로 디중복)
   useEffect(() => {
     const id = params.id;
     if (!id || id === "create") {
@@ -70,40 +100,30 @@ export default function CampaignDetailPage() {
       return;
     }
 
-    // StrictMode에서 같은 id로 두 번 불리지 않도록 가드
-    if (fetchedForIdRef.current === id && campaign) return;
-    fetchedForIdRef.current = id;
-
-    let canceled = false;
     setLoading(true);
     setErrorMsg(null);
 
-    (async () => {
-      try {
-        // 그룹구매 상세 호출
-        const data = await GroupPurchaseApi.getGroupPurchaseById(id);
-        if (canceled) return;
-
+    fetchCampaignOnce(id)
+      .then((data) => {
+        // 라우트가 바뀌었으면 무시
+        if (params.id !== id) return;
         if (!data) {
           setCampaign(null);
           setErrorMsg("해당 공구를 불러올 수 없습니다.");
         } else {
           setCampaign(data);
         }
-      } catch (e) {
-        if (!canceled) {
-          setCampaign(null);
-          setErrorMsg("네트워크 오류가 발생했습니다.");
-        }
-      } finally {
-        if (!canceled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      canceled = true;
-    };
-  }, [params.id]); // router, campaign 의존성 제외
+      })
+      .catch(() => {
+        if (params.id !== id) return;
+        setCampaign(null);
+        setErrorMsg("네트워크 오류가 발생했습니다.");
+      })
+      .finally(() => {
+        if (params.id !== id) return;
+        setLoading(false);
+      });
+  }, [params.id]);
 
   if (params.id === "create") return null;
 
@@ -150,14 +170,16 @@ export default function CampaignDetailPage() {
   const daysLeft = Math.ceil(
     (new Date(campaign.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
- // campaign.product.originalPrice * quantity * getDiscountRate(campaign.targetQuantity) *0.01
+
   const originalTotalPrice = campaign.product.originalPrice * quantity;
-  const discountTotalPrice = campaign.product.originalPrice * quantity * (100-getDiscountRate(campaign.targetQuantity)) *0.01;
+  const discountTotalPrice =
+    campaign.product.originalPrice *
+    quantity *
+    ((100 - getDiscountRate(campaign.targetQuantity)) * 0.01);
   const totalDiscountAmount = originalTotalPrice - discountTotalPrice;
   const finalPrice = discountTotalPrice;
 
   const handleJoinCampaign = () => {
-    // 결제 페이지로 이동하면서 필요한 정보를 URL 파라미터로 전달
     const paymentParams = new URLSearchParams({
       campaignId: campaign.id.toString(),
       productName: campaign.product.name,
@@ -165,9 +187,9 @@ export default function CampaignDetailPage() {
       originalPrice: campaign.product.originalPrice.toString(),
       discountPrice: campaign.discountPrice.toString(),
       finalPrice: finalPrice.toString(),
-      discountRate: getDiscountRate(campaign.targetQuantity).toString()
+      discountRate: getDiscountRate(campaign.targetQuantity).toString(),
     });
-    
+
     router.push(`/payment?${paymentParams.toString()}`);
   };
 
@@ -186,7 +208,6 @@ export default function CampaignDetailPage() {
     }
   };
 
-  // 상태 해석: UI 타입은 WAITING | COMPLETE | CANCELLED
   const isExpiredButAchieved =
     daysLeft <= 0 && campaign.currentQuantity >= campaign.targetQuantity;
 
@@ -310,7 +331,9 @@ export default function CampaignDetailPage() {
               <div className="md:col-span-2 space-y-4">
                 <div className="flex flex-wrap gap-2 mb-3">
                   <Badge
-                    variant={campaign.status === "WAITING" ? "default" : "secondary"}
+                    variant={
+                      campaign.status === "WAITING" ? "default" : "secondary"
+                    }
                     className="bg-hey-gradient text-white"
                   >
                     {campaign.status === "WAITING"
@@ -399,7 +422,7 @@ export default function CampaignDetailPage() {
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-semibold text-green-600">
-                        {(campaign.product.originalPrice * getDiscountRate(campaign.targetQuantity) *0.01).toLocaleString()}원
+                        {(campaign.product.originalPrice * getDiscountRate(campaign.targetQuantity) * 0.01).toLocaleString()}원
                       </div>
                       <div className="text-sm text-gray-600">개당 절약</div>
                     </div>
@@ -433,126 +456,122 @@ export default function CampaignDetailPage() {
             <div className="lg:col-span-1">
               <div className="sticky top-8 space-y-6">
                 <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-purple-50 to-pink-50">
-                      <CardHeader className="text-center pb-4">
-                        <div className="inline-flex items-center gap-2 bg-hey-gradient text-white px-4 py-2 rounded-full text-sm font-medium">
-                          <TrendingDown className="w-4 h-4" />
-                          특가 혜택
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-6">
-                        <div className="text-center space-y-2">
-                          <div className="text-sm text-gray-500 line-through">
-                            정가 {campaign.product.originalPrice.toLocaleString()}원
-                          </div>
-                          <div className="text-3xl font-bold text-purple-600">
-                            {discountTotalPrice.toLocaleString()}원
-                          </div>
-                          <Badge variant="destructive" className="bg-red-500">
-                            {getDiscountRate(campaign.targetQuantity)}% 할인
-                          </Badge>
-                        </div>
+                  <CardHeader className="text-center pb-4">
+                    <div className="inline-flex items-center gap-2 bg-hey-gradient text-white px-4 py-2 rounded-full text-sm font-medium">
+                      <TrendingDown className="w-4 h-4" />
+                      특가 혜택
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="text-center space-y-2">
+                      <div className="text-sm text-gray-500 line-through">
+                        정가 {campaign.product.originalPrice.toLocaleString()}원
+                      </div>
+                      <div className="text-3xl font-bold text-purple-600">
+                        {discountTotalPrice.toLocaleString()}원
+                      </div>
+                      <Badge variant="destructive" className="bg-red-500">
+                        {getDiscountRate(campaign.targetQuantity)}% 할인
+                      </Badge>
+                    </div>
 
-                        {isPaymentAvailable && (
-                          <div className="space-y-4 pt-4 border-t">
-                            {isExpiredButAchieved && (
-                              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                                <p className="text-sm text-green-700 font-medium">
-                                  ✅ 최소인원 달성으로 결제 가능합니다!
-                                </p>
-                              </div>
-                            )}
-
-                            {campaign.status === "WAITING" && (
-                              <div className="space-y-2">
-                                <Label htmlFor="quantity" className="text-sm font-medium">
-                                  수량 선택
-                                </Label>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                    className="w-10 h-10 p-0"
-                                  >
-                                    -
-                                  </Button>
-                                  <Input
-                                    id="quantity"
-                                    type="number"
-                                    min="1"
-                                    max={(campaign.targetQuantity-campaign.currentQuantity)}
-                                    value={quantity}
-                                    onChange={(e) =>
-                                      setQuantity(Math.max(1, Number.parseInt(e.target.value) || 1))
-                                    }
-                                    className="text-center"
-                                  />
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setQuantity(Math.min((campaign.targetQuantity-campaign.currentQuantity), quantity + 1))}
-                                    className="w-10 h-10 p-0"
-                                  >
-                                    +
-                                  </Button>
-                                </div>
-                                <p className="text-xs text-gray-500">최대 {(campaign.targetQuantity-campaign.currentQuantity)}개까지 주문 가능</p>
-                              </div>
-                            )}
-
-                            <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl space-y-3">
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-600">정가 ({quantity}개)</span>
-                                <span className="line-through text-gray-500">
-                                  {originalTotalPrice.toLocaleString()}원
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-red-600 font-medium">할인금액</span>
-                                <span className="text-red-600 font-medium">
-                                  -{totalDiscountAmount.toLocaleString()}원
-                                </span>
-                              </div>
-                              <div className="border-t pt-2">
-                                <div className="flex justify-between items-center">
-                                  <span className="font-bold text-lg">총 금액</span>
-                                  <span className="text-2xl font-bold text-purple-600">
-                                    {finalPrice.toLocaleString()}원
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <Button
-                              className="w-full bg-hey-gradient hover:opacity-90 text-white shadow-lg"
-                              size="lg"
-                              onClick={handleJoinCampaign}
-                            >
-                              결제하기
-                            </Button>
-
-                            <p className="text-xs text-gray-500 text-center">
-                              {isExpiredButAchieved
-                                ? "최소인원이 달성되어 결제가 가능합니다."
-                                : "목표 수량 달성 시 자동으로 주문이 확정됩니다."}
+                    {(campaign.status === "WAITING" || isExpiredButAchieved) && (
+                      <div className="space-y-4 pt-4 border-t">
+                        {isExpiredButAchieved && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                            <p className="text-sm text-green-700 font-medium">
+                              ✅ 최소인원 달성으로 결제 가능합니다!
                             </p>
                           </div>
                         )}
 
-                        {!isPaymentAvailable &&
-                          daysLeft <= 0 &&
-                          campaign.currentQuantity < campaign.targetQuantity && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                              <p className="text-red-700 font-medium">공구가 마감되었습니다</p>
-                              <p className="text-sm text-red-600 mt-1">
-                                최소인원 미달로 결제할 수 없습니다
-                              </p>
+                        {campaign.status === "WAITING" && (
+                          <div className="space-y-2">
+                            <Label htmlFor="quantity" className="text-sm font-medium">
+                              수량 선택
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                className="w-10 h-10 p-0"
+                              >
+                                -
+                              </Button>
+                              <Input
+                                id="quantity"
+                                type="number"
+                                min="1"
+                                max={campaign.targetQuantity - campaign.currentQuantity}
+                                value={quantity}
+                                onChange={(e) =>
+                                  setQuantity(Math.max(1, Number.parseInt(e.target.value) || 1))
+                                }
+                                className="text-center"
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setQuantity(
+                                    Math.min(
+                                      campaign.targetQuantity - campaign.currentQuantity,
+                                      quantity + 1
+                                    )
+                                  )
+                                }
+                                className="w-10 h-10 p-0"
+                              >
+                                +
+                              </Button>
                             </div>
-                          )}
-                      </CardContent>
-                    </Card>
-                    
-                    {!isPaymentAvailable &&
+                            <p className="text-xs text-gray-500">
+                              최대 {campaign.targetQuantity - campaign.currentQuantity}개까지 주문 가능
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl space-y-3">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">정가 ({quantity}개)</span>
+                            <span className="line-through text-gray-500">
+                              {originalTotalPrice.toLocaleString()}원
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-red-600 font-medium">할인금액</span>
+                            <span className="text-red-600 font-medium">
+                              -{totalDiscountAmount.toLocaleString()}원
+                            </span>
+                          </div>
+                          <div className="border-t pt-2">
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold text-lg">총 금액</span>
+                              <span className="text-2xl font-bold text-purple-600">
+                                {finalPrice.toLocaleString()}원
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button
+                          className="w-full bg-hey-gradient hover:opacity-90 text-white shadow-lg"
+                          size="lg"
+                          onClick={handleJoinCampaign}
+                        >
+                          결제하기
+                        </Button>
+
+                        <p className="text-xs text-gray-500 text-center">
+                          {isExpiredButAchieved
+                            ? "최소인원이 달성되어 결제가 가능합니다."
+                            : "목표 수량 달성 시 자동으로 주문이 확정됩니다."}
+                        </p>
+                      </div>
+                    )}
+
+                    {! (campaign.status === "WAITING" || isExpiredButAchieved) &&
                       daysLeft <= 0 &&
                       campaign.currentQuantity < campaign.targetQuantity && (
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
@@ -562,6 +581,8 @@ export default function CampaignDetailPage() {
                           </p>
                         </div>
                       )}
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>

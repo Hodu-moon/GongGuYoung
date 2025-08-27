@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "@/compat/navigation";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
   User,
@@ -16,11 +15,11 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import Image from "@/compat/NextImage";
-import { fetchBNPLRemain, postPayment } from "@/api/Payment";
+import { fetchBNPLRemain, postPayment, fetchRemainAccount } from "@/api/Payment";
+
 interface PaymentInfo {
   campaignId: string;
   productName: string;
@@ -37,9 +36,7 @@ export default function PaymentPage() {
   const { user, logout } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState<"full" | "bnpl" | null>(
-    null
-  );
+  const [paymentMethod, setPaymentMethod] = useState<"full" | "bnpl" | null>(null);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -50,8 +47,9 @@ export default function PaymentPage() {
   // URL 파라미터에서 결제 정보 가져오기
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
 
-  // BNPL 잔액 및 분할 결제 관련
-  const [bnplBalance, setBnplBalance] = useState(100000); // 예시: 10만원 잔액
+  // BNPL / 일반계좌 잔액 및 분할 결제 관련
+  const [bnplBalance, setBnplBalance] = useState(100000); // 예시 초기값
+  const [remainAccount, setRemainAccount] = useState(50000); // 예시 초기값
   const [needsSplitPayment, setNeedsSplitPayment] = useState(false);
   const [bnplAmount, setBnplAmount] = useState(0);
   const [cashAmount, setCashAmount] = useState(0);
@@ -59,35 +57,27 @@ export default function PaymentPage() {
   const [showBnplAmountSelector, setShowBnplAmountSelector] = useState(false);
 
   const steps = [
-    {
-      number: 1,
-      title: "결제 방법",
-      icon: CreditCard,
-      description: "결제 수단을 선택하세요",
-    },
-    {
-      number: 2,
-      title: "비밀번호",
-      icon: Shield,
-      description: "결제 비밀번호를 입력하세요",
-    },
-    {
-      number: 3,
-      title: "완료",
-      icon: Check,
-      description: "결제가 완료되었습니다",
-    },
+    { number: 1, title: "결제 방법", icon: CreditCard, description: "결제 수단을 선택하세요" },
+    { number: 2, title: "비밀번호", icon: Shield, description: "결제 비밀번호를 입력하세요" },
+    { number: 3, title: "완료", icon: Check, description: "결제가 완료되었습니다" },
   ];
+
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
       const remainData = await fetchBNPLRemain(user.id);
+      const accountData = await fetchRemainAccount(user.id);
       if (remainData) {
         setBnplBalance(remainData.remain);
         console.log("👉 불러온 BNPL 잔액:", remainData.remain);
       }
+      if (accountData) {
+        setRemainAccount(accountData.starterBalance);
+        console.log("👉 불러온 통장 잔액:", accountData.starterBalance);
+      }
     })();
   }, [user?.id]);
+
   // 컴포넌트 마운트 시 결제 정보 설정 및 키패드 초기화
   useEffect(() => {
     // URL 파라미터에서 결제 정보 파싱
@@ -148,7 +138,6 @@ export default function PaymentPage() {
     } else {
       setCurrentStep(2);
       window.scrollTo({ top: 0, behavior: "smooth" });
-      // 다음 단계로 넘어갈 때 키패드 재배치
       shuffleNumbers();
     }
   };
@@ -159,14 +148,10 @@ export default function PaymentPage() {
       alert("BNPL 사용 금액을 선택해주세요.");
       return;
     }
-
     if (selectedBnplAmount > bnplBalance) {
-      alert(
-        `BNPL 잔액이 부족합니다. (잔액: ${bnplBalance.toLocaleString()}원)`
-      );
+      alert(`BNPL 잔액이 부족합니다. (잔액: ${bnplBalance.toLocaleString()}원)`);
       return;
     }
-
     if (selectedBnplAmount > (paymentInfo?.finalPrice || 0)) {
       alert("결제 금액보다 많은 BNPL를 사용할 수 없습니다.");
       return;
@@ -191,18 +176,11 @@ export default function PaymentPage() {
   };
 
   const handleNumberClick = (num: number) => {
-    if (password.length < 6) {
-      setPassword((prev) => prev + num.toString());
-    }
+    if (password.length < 6) setPassword((prev) => prev + num.toString());
   };
 
-  const handlePasswordDelete = () => {
-    setPassword((prev) => prev.slice(0, -1));
-  };
-
-  const handlePasswordClear = () => {
-    setPassword("");
-  };
+  const handlePasswordDelete = () => setPassword((prev) => prev.slice(0, -1));
+  const handlePasswordClear = () => setPassword("");
 
   const handlePayment = async () => {
     if (password.length !== 6) {
@@ -215,9 +193,7 @@ export default function PaymentPage() {
     }
     // user.id는 숫자여야 합니다. (문자라면 Number(...)로 변환)
     const memberId =
-      typeof (user as any)?.id === "number"
-        ? (user as any).id
-        : Number((user as any)?.id);
+      typeof (user as any)?.id === "number" ? (user as any).id : Number((user as any)?.id);
     if (!memberId) {
       alert("로그인이 필요합니다.");
       return;
@@ -237,12 +213,8 @@ export default function PaymentPage() {
 
     if (paymentMethod === "bnpl") {
       paymentType = "BNPL";
-      // 사용자가 선택한 BNPL 금액이 우선. 없으면 가능한 최대치 사용.
       const chosenBnpl =
-        selectedBnplAmount > 0
-          ? selectedBnplAmount
-          : Math.min(bnplBalance, paymentInfo.finalPrice);
-
+        selectedBnplAmount > 0 ? selectedBnplAmount : Math.min(bnplBalance, paymentInfo.finalPrice);
       bnpl = Math.min(chosenBnpl, paymentInfo.finalPrice);
       immediate = Math.max(0, paymentInfo.finalPrice - bnpl);
     } else {
@@ -251,15 +223,7 @@ export default function PaymentPage() {
       bnpl = 0;
     }
 
-    // 전송 payload
-    const payload = {
-      groupPurchaseId,
-      memberId,
-      count,
-      immediate,
-      bnpl,
-      paymentType,
-    } as const;
+    const payload = { groupPurchaseId, memberId, count, immediate, bnpl, paymentType } as const;
 
     try {
       console.log("📤 POST /api/v1/payments", payload);
@@ -268,11 +232,10 @@ export default function PaymentPage() {
 
       if (!ok) {
         alert("결제에 실패했습니다. 잠시 후 다시 시도해주세요.");
-        setCurrentStep(2); // 다시 비밀번호 단계로
+        setCurrentStep(2);
         return;
       }
 
-      // 성공 시 성공 페이지로 이동
       const successParams = new URLSearchParams({
         orderId: `ORDER-${Date.now()}`,
         method: paymentMethod || "full",
@@ -323,23 +286,20 @@ export default function PaymentPage() {
     );
   }
 
+  // ✅ Step2에서 표시할 즉시결제 금액/예상 잔액 계산
+  const immediateToUse =
+    paymentMethod === "full" ? paymentInfo.finalPrice : needsSplitPayment ? cashAmount : 0;
+  const afterBalance = remainAccount - immediateToUse;
+  const insufficient = immediateToUse > 0 && remainAccount < immediateToUse;
+
   return (
     <AuthGuard>
       <div className="min-h-screen bg-hey-gradient">
         <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
           <div className="container mx-auto px-4 py-3">
             <div className="flex justify-between items-center">
-              <Link
-                to="/dashboard"
-                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-              >
-                <Image
-                  src="/hey-young-logo.png"
-                  alt="Hey Young Smart Campus"
-                  width={36}
-                  height={36}
-                  className="rounded-lg"
-                />
+              <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <Image src="/hey-young-logo.png" alt="Hey Young Smart Campus" width={36} height={36} className="rounded-lg" />
                 <div>
                   <h1 className="text-lg font-bold text-white">Hey Young</h1>
                   <p className="text-xs text-white/80">Smart Campus</p>
@@ -348,29 +308,16 @@ export default function PaymentPage() {
               <div className="flex gap-1">
                 <NotificationBell />
                 <Link to="/my-page">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20 p-2"
-                  >
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2">
                     <User className="w-4 h-4" />
                   </Button>
                 </Link>
                 <Link to={`/campaigns/${paymentInfo.campaignId}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20 p-2"
-                  >
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2">
                     <ArrowLeft className="w-4 h-4" />
                   </Button>
                 </Link>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-white/20 p-2"
-                  onClick={logout}
-                >
+                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2" onClick={logout}>
                   로그아웃
                 </Button>
               </div>
@@ -388,9 +335,7 @@ export default function PaymentPage() {
                 </div>
                 <h1 className="text-3xl font-bold text-white">결제하기</h1>
               </div>
-              <p className="text-white/80 text-lg max-w-2xl mx-auto">
-                안전하고 간편한 결제로 공동구매에 참여하세요.
-              </p>
+              <p className="text-white/80 text-lg max-w-2xl mx-auto">안전하고 간편한 결제로 공동구매에 참여하세요.</p>
             </div>
 
             {/* Progress Steps */}
@@ -402,16 +347,13 @@ export default function PaymentPage() {
                   style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
                 ></div>
 
-                {steps.map((step, index) => {
+                {steps.map((step) => {
                   const Icon = step.icon;
                   const isActive = currentStep === step.number;
                   const isCompleted = currentStep > step.number;
 
                   return (
-                    <div
-                      key={step.number}
-                      className="flex flex-col items-center z-10"
-                    >
+                    <div key={step.number} className="flex flex-col items-center z-10">
                       <div
                         className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
                           isCompleted
@@ -421,25 +363,11 @@ export default function PaymentPage() {
                             : "bg-white/50 backdrop-blur-sm border-2 border-white/30 text-white/60"
                         }`}
                       >
-                        {isCompleted ? (
-                          <Check className="w-5 h-5" />
-                        ) : (
-                          <Icon className="w-5 h-5" />
-                        )}
+                        {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                       </div>
                       <div className="mt-2 text-center">
-                        <div
-                          className={`text-sm font-medium ${
-                            isActive || isCompleted
-                              ? "text-white"
-                              : "text-white/60"
-                          }`}
-                        >
-                          {step.title}
-                        </div>
-                        <div className="text-xs text-white/60 max-w-20 mt-1">
-                          {step.description}
-                        </div>
+                        <div className={`text-sm font-medium ${isActive || isCompleted ? "text-white" : "text-white/60"}`}>{step.title}</div>
+                        <div className="text-xs text-white/60 max-w-20 mt-1">{step.description}</div>
                       </div>
                     </div>
                   );
@@ -458,28 +386,20 @@ export default function PaymentPage() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">상품:</span>
-                    <span className="font-medium">
-                      {paymentInfo.productName}
-                    </span>
+                    <span className="font-medium">{paymentInfo.productName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">수량:</span>
-                    <span className="font-medium">
-                      {paymentInfo.quantity}개
-                    </span>
+                    <span className="font-medium">{paymentInfo.quantity}개</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">할인율:</span>
-                    <span className="font-medium text-red-600">
-                      {paymentInfo.discountRate}%
-                    </span>
+                    <span className="font-medium text-red-600">{paymentInfo.discountRate}%</span>
                   </div>
                   <div className="border-t pt-2">
                     <div className="flex justify-between">
                       <span className="font-bold text-lg">총 결제 금액:</span>
-                      <span className="font-bold text-purple-600 text-lg">
-                        {paymentInfo.finalPrice.toLocaleString()}원
-                      </span>
+                      <span className="font-bold text-purple-600 text-lg">{paymentInfo.finalPrice.toLocaleString()}원</span>
                     </div>
                   </div>
                 </div>
@@ -492,17 +412,11 @@ export default function PaymentPage() {
             <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-8">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-white/20 rounded-full">
-                  {React.createElement(steps[currentStep - 1].icon, {
-                    className: "w-6 h-6",
-                  })}
+                  {React.createElement(steps[currentStep - 1].icon, { className: "w-6 h-6" })}
                 </div>
                 <div>
-                  <CardTitle className="text-2xl font-bold text-white">
-                    {steps[currentStep - 1].title}
-                  </CardTitle>
-                  <p className="text-white/90 mt-1">
-                    {steps[currentStep - 1].description}
-                  </p>
+                  <CardTitle className="text-2xl font-bold text-white">{steps[currentStep - 1].title}</CardTitle>
+                  <p className="text-white/90 mt-1">{steps[currentStep - 1].description}</p>
                 </div>
               </div>
             </CardHeader>
@@ -512,22 +426,14 @@ export default function PaymentPage() {
               {showBnplAmountSelector && (
                 <div className="space-y-6">
                   <div className="text-center">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
-                      BNPL 사용 금액 선택
-                    </h3>
-                    <p className="text-gray-600">
-                      얼마나 BNPL로 결제하시겠어요?
-                    </p>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">BNPL 사용 금액 선택</h3>
+                    <p className="text-gray-600">얼마나 BNPL로 결제하시겠어요?</p>
                   </div>
 
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
                     <div className="text-center mb-6">
-                      <div className="text-3xl font-bold text-blue-600 mb-2">
-                        {selectedBnplAmount.toLocaleString()}원
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        BNPL로 결제할 금액
-                      </div>
+                      <div className="text-3xl font-bold text-blue-600 mb-2">{selectedBnplAmount.toLocaleString()}원</div>
+                      <div className="text-sm text-gray-600">BNPL로 결제할 금액</div>
                     </div>
 
                     {/* 슬라이더 */}
@@ -535,55 +441,27 @@ export default function PaymentPage() {
                       <input
                         type="range"
                         min="0"
-                        max={Math.min(
-                          bnplBalance,
-                          paymentInfo?.finalPrice || 0
-                        )}
+                        max={Math.min(bnplBalance, paymentInfo?.finalPrice || 0)}
                         step="1"
                         value={selectedBnplAmount}
-                        onChange={(e) =>
-                          handleBnplAmountChange(parseInt(e.target.value))
-                        }
+                        onChange={(e) => handleBnplAmountChange(parseInt(e.target.value))}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                         style={{
                           background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${
-                            (selectedBnplAmount /
-                              Math.min(
-                                bnplBalance,
-                                paymentInfo?.finalPrice || 0
-                              )) *
-                            100
-                          }%, #E5E7EB ${
-                            (selectedBnplAmount /
-                              Math.min(
-                                bnplBalance,
-                                paymentInfo?.finalPrice || 0
-                              )) *
-                            100
-                          }%, #E5E7EB 100%)`,
+                            (selectedBnplAmount / Math.min(bnplBalance, paymentInfo?.finalPrice || 0)) * 100
+                          }%, #E5E7EB ${(selectedBnplAmount / Math.min(bnplBalance, paymentInfo?.finalPrice || 0)) * 100}%, #E5E7EB 100%)`,
                         }}
                       />
-
                       <div className="flex justify-between text-xs text-gray-500">
                         <span>0원</span>
-                        <span>
-                          {Math.min(
-                            bnplBalance,
-                            paymentInfo?.finalPrice || 0
-                          ).toLocaleString()}
-                          원
-                        </span>
+                        <span>{Math.min(bnplBalance, paymentInfo?.finalPrice || 0).toLocaleString()}원</span>
                       </div>
                     </div>
 
                     {/* 빠른 선택 버튼들 */}
                     <div className="grid grid-cols-4 gap-2 mt-4">
                       {[25, 50, 75, 100].map((percent) => {
-                        const amount = Math.floor(
-                          (Math.min(bnplBalance, paymentInfo?.finalPrice || 0) *
-                            percent) /
-                            100
-                        );
+                        const amount = Math.floor((Math.min(bnplBalance, paymentInfo?.finalPrice || 0) * percent) / 100);
                         return (
                           <Button
                             key={percent}
@@ -601,23 +479,14 @@ export default function PaymentPage() {
 
                     {/* 직접 입력 */}
                     <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        직접 입력 (원 단위)
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">직접 입력 (원 단위)</label>
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
                           min="0"
-                          max={Math.min(
-                            bnplBalance,
-                            paymentInfo?.finalPrice || 0
-                          )}
+                          max={Math.min(bnplBalance, paymentInfo?.finalPrice || 0)}
                           value={selectedBnplAmount || ""}
-                          onChange={(e) =>
-                            handleBnplAmountChange(
-                              parseInt(e.target.value || "0")
-                            )
-                          }
+                          onChange={(e) => handleBnplAmountChange(parseInt(e.target.value || "0"))}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="금액을 입력하세요"
                         />
@@ -631,35 +500,22 @@ export default function PaymentPage() {
                     <div className="bg-white p-4 rounded-lg border border-blue-200">
                       <div className="flex items-center gap-2 mb-2">
                         <Wallet className="w-4 h-4 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-800">
-                          BNPL 계좌
-                        </span>
+                        <span className="text-sm font-medium text-blue-800">BNPL 계좌</span>
                       </div>
-                      <div className="text-lg font-bold text-blue-600">
-                        {selectedBnplAmount.toLocaleString()}원
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        잔액: {bnplBalance.toLocaleString()}원
-                      </div>
+                      <div className="text-lg font-bold text-blue-600">{selectedBnplAmount.toLocaleString()}원</div>
+                      <div className="text-xs text-gray-500">잔액: {bnplBalance.toLocaleString()}원</div>
                     </div>
 
                     <div className="bg-white p-4 rounded-lg border border-green-200">
                       <div className="flex items-center gap-2 mb-2">
                         <CreditCard className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-800">
-                          일반 계좌
-                        </span>
+                        <span className="text-sm font-medium text-green-800">일반 계좌</span>
                       </div>
                       <div className="text-lg font-bold text-green-600">
-                        {(
-                          (paymentInfo?.finalPrice || 0) - selectedBnplAmount
-                        ).toLocaleString()}
-                        원
+                        {((paymentInfo?.finalPrice || 0) - selectedBnplAmount).toLocaleString()}원
                       </div>
                       <div className="text-xs text-gray-500">
-                        {selectedBnplAmount === (paymentInfo?.finalPrice || 0)
-                          ? "사용하지 않음"
-                          : "부족분 결제"}
+                        현재 잔액: {remainAccount.toLocaleString()}원
                       </div>
                     </div>
                   </div>
@@ -695,9 +551,7 @@ export default function PaymentPage() {
                     <div
                       onClick={() => handlePaymentMethodSelect("full")}
                       className={`cursor-pointer p-4 border-2 rounded-xl transition-all hover:shadow-md ${
-                        paymentMethod === "full"
-                          ? "border-purple-600 bg-purple-50"
-                          : "border-gray-200 hover:border-purple-300"
+                        paymentMethod === "full" ? "border-purple-600 bg-purple-50" : "border-gray-200 hover:border-purple-300"
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -706,18 +560,21 @@ export default function PaymentPage() {
                             <CreditCard className="w-6 h-6 text-green-600" />
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-900">
-                              일반 계좌 결제
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              일반 계좌에서 결제
+                            <h4 className="font-semibold text-gray-900">일반 결제</h4>
+                            {/* ✅ 일반계좌 현재 잔액 표시 */}
+                            <p className="text-xs text-gray-500 mt-1">
+                              현재 잔액: <span className="font-medium">{remainAccount.toLocaleString()}원</span>
                             </p>
+                            {/* 잔액 부족 힌트 */}
+                            {remainAccount < paymentInfo.finalPrice && (
+                              <p className="text-xs text-amber-600 mt-1">
+                                {(paymentInfo.finalPrice - remainAccount).toLocaleString()}원 부족
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xl font-bold text-green-600">
-                            {paymentInfo.finalPrice.toLocaleString()}원
-                          </div>
+                          <div className="text-xl font-bold text-green-600">{paymentInfo.finalPrice.toLocaleString()}원</div>
                           <div className="text-sm text-gray-500">즉시 결제</div>
                         </div>
                       </div>
@@ -727,9 +584,7 @@ export default function PaymentPage() {
                     <div
                       onClick={() => handlePaymentMethodSelect("bnpl")}
                       className={`cursor-pointer p-4 border-2 rounded-xl transition-all hover:shadow-md ${
-                        paymentMethod === "bnpl"
-                          ? "border-purple-600 bg-purple-50"
-                          : "border-gray-200 hover:border-purple-300"
+                        paymentMethod === "bnpl" ? "border-purple-600 bg-purple-50" : "border-gray-200 hover:border-purple-300"
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -740,30 +595,22 @@ export default function PaymentPage() {
                           <div>
                             <h4 className="font-semibold text-gray-900">
                               BNPL 계좌 결제
-                              {paymentMethod === "bnpl" && (
-                                <span className="text-blue-600 ml-2">
-                                  (선택완료)
-                                </span>
-                              )}
+                              {paymentMethod === "bnpl" && <span className="text-blue-600 ml-2">(선택완료)</span>}
                             </h4>
                             <p className="text-sm text-gray-600">
                               {paymentMethod === "bnpl"
-                                ? `BNPL ${bnplAmount.toLocaleString()}원${
-                                    needsSplitPayment
-                                      ? ` + 일반계좌 ${cashAmount.toLocaleString()}원`
-                                      : ""
-                                  }`
+                                ? `BNPL ${bnplAmount.toLocaleString()}원${needsSplitPayment ? ` + 일반계좌 ${cashAmount.toLocaleString()}원` : ""}`
                                 : `BNPL 한도: ${bnplBalance.toLocaleString()}원 사용 가능`}
+                            </p>
+                            {/* ✅ 일반계좌 잔액도 함께 안내 */}
+                            <p className="text-xs text-gray-500 mt-1">
+                              내   잔액: {remainAccount.toLocaleString()}원
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xl font-bold text-blue-600">
-                            {paymentInfo.finalPrice.toLocaleString()}원
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {needsSplitPayment ? "분할 결제" : "BNPL 계좌"}
-                          </div>
+                          <div className="text-xl font-bold text-blue-600">{paymentInfo.finalPrice.toLocaleString()}원</div>
+                          <div className="text-sm text-gray-500">{needsSplitPayment ? "분할 결제" : "BNPL 계좌"}</div>
                         </div>
                       </div>
 
@@ -777,8 +624,12 @@ export default function PaymentPage() {
                             <span className="font-medium">BNPL 잔액 부족</span>
                           </div>
                           <div className="text-xs text-orange-700 mt-1 ml-6">
-                            BNPL 잔액: {bnplBalance.toLocaleString()}원 |
-                            부족분: {cashAmount.toLocaleString()}원
+                            BNPL 잔액: {bnplBalance.toLocaleString()}원 / 내 계좌: {cashAmount.toLocaleString()}원 결제
+                            {remainAccount < cashAmount && (
+                              <span className="ml-2 text-red-600 font-medium">
+                                (일반 계좌 잔액 부족 {Math.max(0, cashAmount - remainAccount).toLocaleString()}원)
+                              </span>
+                            )}
                           </div>
                         </div>
                       )}
@@ -791,9 +642,7 @@ export default function PaymentPage() {
               {currentStep === 2 && (
                 <div className="space-y-6">
                   <div className="text-center">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      결제 비밀번호를 입력하세요
-                    </h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">결제 비밀번호를 입력하세요</h3>
                     <p className="text-gray-600 text-sm">
                       {paymentMethod === "full"
                         ? "일반 계좌"
@@ -806,58 +655,74 @@ export default function PaymentPage() {
 
                   {/* 분할 결제 정보 표시 */}
                   {paymentMethod === "bnpl" && needsSplitPayment && (
-                    <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-xl border border-orange-200 mb-6">
+                    <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-xl border border-orange-200 mb-2">
                       <div className="text-center mb-4">
-                        <h4 className="font-bold text-orange-800 mb-2">
-                          🔄 분할 결제
-                        </h4>
-                        <p className="text-sm text-orange-700">
-                          BNPL 잔액이 부족하여 자동으로 분할 결제됩니다
-                        </p>
+                        <h4 className="font-bold text-orange-800 mb-2">🔄 분할 결제</h4>
+                        <p className="text-sm text-orange-700">BNPL 잔액이 부족하여 자동으로 분할 결제됩니다</p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-white p-4 rounded-lg border">
                           <div className="flex items-center gap-2 mb-2">
                             <Wallet className="w-4 h-4 text-blue-600" />
-                            <span className="text-sm font-medium text-blue-800">
-                              BNPL 계좌
-                            </span>
+                            <span className="text-sm font-medium text-blue-800">BNPL 계좌</span>
                           </div>
-                          <div className="text-lg font-bold text-blue-600">
-                            {bnplAmount.toLocaleString()}원
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            잔액 전액 사용
-                          </div>
+                          <div className="text-lg font-bold text-blue-600">{bnplAmount.toLocaleString()}원</div>
+                          <div className="text-xs text-gray-500">잔액 전액 사용</div>
                         </div>
 
                         <div className="bg-white p-4 rounded-lg border">
                           <div className="flex items-center gap-2 mb-2">
                             <CreditCard className="w-4 h-4 text-green-600" />
-                            <span className="text-sm font-medium text-green-800">
-                              일반 계좌
-                            </span>
+                            <span className="text-sm font-medium text-green-800">일반 계좌</span>
                           </div>
-                          <div className="text-lg font-bold text-green-600">
-                            {cashAmount.toLocaleString()}원
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            부족분 결제
-                          </div>
+                          <div className="text-lg font-bold text-green-600">{cashAmount.toLocaleString()}원</div>
+                          <div className="text-xs text-gray-500">일반 결제</div>
                         </div>
                       </div>
 
                       <div className="mt-4 text-center">
                         <div className="text-sm text-orange-700">
-                          총 결제 금액:{" "}
-                          <span className="font-bold">
-                            {paymentInfo?.finalPrice.toLocaleString()}원
-                          </span>
+                          총 결제 금액: <span className="font-bold">{paymentInfo?.finalPrice.toLocaleString()}원</span>
                         </div>
                       </div>
                     </div>
                   )}
+
+                  {/* ✅ 일반계좌 잔액 요약 (현재/사용/예상) */}
+                  <div
+                    className={`rounded-xl border p-4 ${
+                      insufficient ? "bg-red-50 border-red-200" : "bg-slate-50 border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">일반 계좌 현재 잔액</span>
+                      <span className="font-semibold">{remainAccount.toLocaleString()}원</span>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-sm text-slate-600">
+                        이번 결제 일반계좌 사용{" "}
+                        {paymentMethod === "full" ? "(일반 결제)" : needsSplitPayment ? "(분할 결제)" : "(사용 없음)"}
+                      </span>
+                      <span className="font-semibold">
+                        {immediateToUse > 0 ? immediateToUse.toLocaleString() + "원" : "0원"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-sm text-slate-600">결제 후 예상 잔액</span>
+                      <span className={`font-semibold ${afterBalance < 0 ? "text-red-600" : "text-slate-900"}`}>
+                        {(afterBalance >= 0 ? afterBalance : 0).toLocaleString()}원
+                      </span>
+                    </div>
+
+                    {insufficient && (
+                      <div className="mt-3 text-xs text-red-700">
+                        일반 계좌 잔액이 부족합니다. 부족 금액: {(immediateToUse - remainAccount).toLocaleString()}원
+                      </div>
+                    )}
+                  </div>
 
                   {/* 비밀번호 표시 */}
                   <div className="flex justify-center mb-6">
@@ -866,13 +731,10 @@ export default function PaymentPage() {
                         <div
                           key={i}
                           className={`w-12 h-12 border-2 rounded-lg flex items-center justify-center ${
-                            password.length > i
-                              ? "border-purple-600 bg-purple-50"
-                              : "border-gray-300"
+                            password.length > i ? "border-purple-600 bg-purple-50" : "border-gray-300"
                           }`}
                         >
-                          {password.length > i &&
-                            (showPassword ? password[i] : "●")}
+                          {password.length > i && (showPassword ? password[i] : "●")}
                         </div>
                       ))}
                     </div>
@@ -880,17 +742,8 @@ export default function PaymentPage() {
 
                   {/* 비밀번호 보기/숨기기 */}
                   <div className="flex justify-center mb-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="flex items-center gap-2"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
+                    <Button variant="outline" size="sm" onClick={() => setShowPassword(!showPassword)} className="flex items-center gap-2">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       {showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
                     </Button>
                   </div>
@@ -942,25 +795,28 @@ export default function PaymentPage() {
                     </div>
                   </div>
 
-                  {/* 결제 버튼 */}
+                  {/* 결제 버튼 + 잔액부족 경고 */}
                   <Button
                     className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
                     size="lg"
                     onClick={handlePayment}
-                    disabled={password.length !== 6}
+                    disabled={password.length !== 6 || insufficient}
+                    title={insufficient ? "잔액 부족으로 결제할 수 없습니다." : ""}
+                    aria-disabled={password.length !== 6 || insufficient}
                   >
-                    {paymentInfo.finalPrice.toLocaleString()}원 결제하기
+                    {insufficient ? "잔액 부족" : `${paymentInfo.finalPrice.toLocaleString()}원 결제하기`}
                   </Button>
+
+                  {insufficient && (
+                    <p className="mt-2 text-center text-sm text-red-600">
+                      일반 계좌 잔액이 부족하여 결제할 수 없습니다. 부족 금액: {(immediateToUse - remainAccount).toLocaleString()}원
+                    </p>
+                  )}
 
                   {/* 키패드 재배치 버튼 */}
                   <div className="text-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={shuffleNumbers}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      🔄 키패드 재배치
+                    <Button variant="ghost" size="sm" onClick={shuffleNumbers} className="text-gray-500 hover:text-gray-700">
+                      키패드 재배치
                     </Button>
                   </div>
                 </div>
@@ -974,9 +830,7 @@ export default function PaymentPage() {
                       <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
                         <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        결제 처리 중...
-                      </h3>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">결제 처리 중...</h3>
                       <p className="text-gray-600">잠시만 기다려주세요.</p>
                     </div>
                   ) : (
@@ -984,12 +838,8 @@ export default function PaymentPage() {
                       <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                         <Check className="w-10 h-10 text-green-600" />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        결제가 완료되었습니다!
-                      </h3>
-                      <p className="text-gray-600">
-                        공동구매 참여가 완료되었습니다.
-                      </p>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">결제가 완료되었습니다!</h3>
+                      <p className="text-gray-600">공동구매 참여가 완료되었습니다.</p>
                     </div>
                   )}
                 </div>
@@ -998,7 +848,7 @@ export default function PaymentPage() {
           </div>
         </div>
 
-        {/* Fixed Bottom Navigation */}
+        {/* Fixed Bottom Navigation (화면 하단 고정) */}
         {currentStep < 3 && (
           <div className="fixed bottom-0 left-0 right-0 bg-white/10 backdrop-blur-md border-t border-white/20 shadow-2xl z-50">
             <div className="container mx-auto px-4 py-4">
