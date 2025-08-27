@@ -1,10 +1,12 @@
 package xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.service;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.entity.GroupPurchase;
 import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.repository.GroupPurchaseRepository;
@@ -30,6 +32,12 @@ public class DelayedJobServiceImpl implements DelayedJobService {
     private final GroupPurchaseRepository groupPurchaseRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
+
+    @PostConstruct
+    public void clearAllDelayedJobs() {
+        redisTemplate.delete(DELAYED_JOB_KEY);
+        log.info("모든 지연 작업이 삭제되었습니다: {}", DELAYED_JOB_KEY);
+    }
 
     @Override
     public void scheduleGroupPurchaseExpiry(Long groupPurchaseId, LocalDateTime expiryTime) {
@@ -94,8 +102,8 @@ public class DelayedJobServiceImpl implements DelayedJobService {
         log.info("=== GROUP PURCHASE EXPIRED EVENT COMPLETED ===");
     }
     
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    private void updateGroupPurchaseStatus(GroupPurchase groupPurchase) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void updateGroupPurchaseStatus(GroupPurchase groupPurchase) {
         groupPurchase.processExpiry();
         groupPurchaseRepository.save(groupPurchase);
     }
