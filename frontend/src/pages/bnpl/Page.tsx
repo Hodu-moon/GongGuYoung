@@ -72,16 +72,16 @@ export default function BNPLPage() {
     loadBnplData()
   }, [user?.id])
 
-  // BNPL 사용 중인 금액 계산 (PROCESSING 상태인 항목들의 합)
-  const currentUsedAmount = bnplItems
-    .filter(item => item.bnplstatus === "PROCESSING")
-    .reduce((sum, item) => sum + item.bnplAmount, 0)
-
-  // BNPL 한도 정보
+  // BNPL 한도 정보 (API 실제 데이터 사용 - my-page와 동일한 로직)
+  const actualBnplLimit = bnplRemain?.bnplLimit || 0
+  const remainAmount = bnplRemain?.remain || 0
+  const hasNoLimit = actualBnplLimit === 0
+  
   const bnplCreditInfo = {
-    totalLimit: bnplRemain ? (bnplRemain.remain + currentUsedAmount) : 500000, // 잔액 + 사용중 = 총한도
-    usedAmount: currentUsedAmount, // 현재 사용 중인 금액 (PROCESSING 상태의 합)
-    availableAmount: bnplRemain?.remain || 0, // API에서 받은 사용 가능한 잔여 금액
+    totalLimit: hasNoLimit ? 100000 : actualBnplLimit, // API에서 받은 bnplLimit
+    usedAmount: hasNoLimit ? 0 : (actualBnplLimit - remainAmount), // 총 한도 - 사용 가능 금액 = 사용 중 금액
+    availableAmount: hasNoLimit ? 100000 : remainAmount, // API에서 받은 remain (사용 가능한 금액)
+    hasNoLimit, // 한도가 없는 상태인지 여부
   }
 
   const usagePercentage = bnplCreditInfo.totalLimit > 0 ? (bnplCreditInfo.usedAmount / bnplCreditInfo.totalLimit) * 100 : 0
@@ -123,35 +123,51 @@ export default function BNPLPage() {
                     </div>
                   ) : (
                     <>
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-600">
-                          {bnplCreditInfo.availableAmount.toLocaleString()}원
-                        </div>
-                        <div className="text-sm text-blue-700">사용 가능한 잔여 금액</div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>사용률</span>
-                          <span>{usagePercentage.toFixed(1)}%</span>
-                        </div>
-                        <Progress value={usagePercentage} className="h-3" />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="text-center p-3 bg-white/50 rounded-lg">
-                          <div className="font-bold text-blue-600">
-                            {bnplCreditInfo.totalLimit.toLocaleString()}원
+                      {bnplCreditInfo.hasNoLimit ? (
+                        <div className="text-center py-4">
+                          <div className="text-2xl font-bold text-orange-600 mb-2">
+                            한도가 없습니다
                           </div>
-                          <div className="text-blue-700">총 한도</div>
-                        </div>
-                        <div className="text-center p-3 bg-white/50 rounded-lg">
-                          <div className="font-bold text-red-600">
-                            {bnplCreditInfo.usedAmount.toLocaleString()}원
+                          <div className="text-sm text-orange-700 mb-4">
+                            AI 신용평가를 통해 BNPL 한도를 받아보세요
                           </div>
-                          <div className="text-red-700">사용 중</div>
+                          <div className="text-lg font-semibold text-gray-600">
+                            최소 10만원 ~ 최대 50만원
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <>
+                          <div className="text-center">
+                            <div className="text-3xl font-bold text-blue-600">
+                              {bnplCreditInfo.availableAmount.toLocaleString()}원
+                            </div>
+                            <div className="text-sm text-blue-700">사용 가능한 잔여 금액</div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>사용률</span>
+                              <span>{usagePercentage.toFixed(1)}%</span>
+                            </div>
+                            <Progress value={usagePercentage} className="h-3" />
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="text-center p-3 bg-white/50 rounded-lg">
+                              <div className="font-bold text-blue-600">
+                                {bnplCreditInfo.totalLimit.toLocaleString()}원
+                              </div>
+                              <div className="text-blue-700">총 한도</div>
+                            </div>
+                            <div className="text-center p-3 bg-white/50 rounded-lg">
+                              <div className="font-bold text-red-600">
+                                {bnplCreditInfo.usedAmount.toLocaleString()}원
+                              </div>
+                              <div className="text-red-700">사용 중</div>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </CardContent>
@@ -171,7 +187,7 @@ export default function BNPLPage() {
                       AI 기반 신용평가로
                     </div>
                     <div className="text-2xl font-bold text-green-600">
-                      최대 30만원
+                      최대 50만원
                     </div>
                     <div className="text-sm text-green-700">한도 증액 가능</div>
                   </div>
@@ -179,11 +195,15 @@ export default function BNPLPage() {
                   <div className="space-y-2 text-sm text-green-700">
                     <div className="flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" />
-                      학점, 출석률 등 대학생활 데이터 활용
+                      1단계: 학점, 출석률, 활동 평가 (최대 30만원)
                     </div>
                     <div className="flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" />
-                      즉시 AI 평가 및 한도 결정
+                      2단계: AI 신용평가로 추가 20만원 증액
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      필수: 학생증 + 재학증명서 (기본 10만원)
                     </div>
                   </div>
                   
