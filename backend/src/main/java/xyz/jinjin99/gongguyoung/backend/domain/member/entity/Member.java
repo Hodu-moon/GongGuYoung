@@ -38,6 +38,11 @@ public class Member {
     @Column(nullable = true)
     private String starterAccountNo;
 
+    // bnpl limit
+    @Column
+    private int bnplLimit;
+
+
     // BNPL 계좌
     @Column(nullable = true)
     private String flexAccountNo;
@@ -49,5 +54,9 @@ public class Member {
     public Member(String name, String email) {
         this.name = name;
         this.email = email;
+    }
+
+    public void updateBnplLimit(int limit){
+        this.bnplLimit = limit;
     }
 }
