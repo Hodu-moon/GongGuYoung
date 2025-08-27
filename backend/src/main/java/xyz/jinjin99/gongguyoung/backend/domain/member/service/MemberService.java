@@ -144,6 +144,7 @@ public class MemberService {
                 .email(request.getEmail())
                 .password(encodedPassword)
                 .userKey(userKey)
+                .bnplLimitUpdateFlag(false)
                 .bnplLimit(100000)
                 .starterAccountNo(starterAccountNo)
                 .flexAccountNo(bnplAccountNo)
@@ -222,6 +223,10 @@ public class MemberService {
     @Transactional
     public BNPLLimitUpdateResponse updateBnplLimit(Long memberId, int limit){
         Member member = getMember(memberId);
+
+        if(member.isBnplLimitUpdateFlag()){
+
+        }
 
         // 10만원
         int bnplLimit = member.getBnplLimit();

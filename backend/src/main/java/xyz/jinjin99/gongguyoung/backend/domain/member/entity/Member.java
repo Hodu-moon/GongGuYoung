@@ -46,6 +46,11 @@ public class Member {
     // BNPL 계좌
     @Column(nullable = true)
     private String flexAccountNo;
+
+    // bnpl update flag
+    @Column
+    private boolean bnplLimitUpdateFlag;
+
     
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
