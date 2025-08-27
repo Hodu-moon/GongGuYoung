@@ -14,4 +14,6 @@ public interface GroupPurchaseService {
     GroupPurchaseResponse getGroupPurchaseById(Long id);
     
     GroupPurchaseResponse getGroupPurchaseByIdWithViewCount(Long id);
+
+    List<GroupPurchaseResponse> getAllGroupPurchasesByMemberId(Long memberId);
 }

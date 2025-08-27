@@ -118,4 +118,12 @@ public class GroupPurchaseServiceImpl implements GroupPurchaseService {
 
         return GroupPurchaseResponse.from(groupPurchase);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<GroupPurchaseResponse> getAllGroupPurchasesByMemberId(Long memberId) {
+        return groupPurchaseRepository.findByMemberId(memberId).stream()
+                .map(GroupPurchaseResponse::from)
+                .collect(Collectors.toList());
+    }
 }
