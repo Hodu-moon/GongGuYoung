@@ -9,14 +9,13 @@ import xyz.jinjin99.gongguyoung.backend.client.finopen.client.ManagerClient;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.client.MemberClient;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.common.BankAccountRecord;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.common.MemberRecord;
-import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.BaseRequest;
-import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.CreateDemandDepositAccountRequest;
-import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.InquireDemandDepositAccountListRequest;
-import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.UpdateDemandDepositAccountDepositRequest;
+import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.*;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.CreateDemandDepositAccountResponse;
+import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.InquireDemandDepositAccountBalanceResponse;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.InquireDemandDepositAccountListResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.request.SignupRequest;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.MemberAccountsNo;
+import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.MemberStarterAccountResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.SignupResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.entity.Member;
 import xyz.jinjin99.gongguyoung.backend.domain.member.repository.MemberRepository;
@@ -189,6 +188,28 @@ public class MemberService {
                 .orElseThrow(() -> new RuntimeException("회원이 존재하지 않습니다."));
     }
 
+
+    public MemberStarterAccountResponse  getStarterBalance(Long memberId){
+        Member member = getMember(memberId);
+
+
+        InquireDemandDepositAccountBalanceResponse response = demandDepositClient.inquireDemandDepositAccountBalance(
+                InquireDemandDepositAccountBalanceRequest.builder()
+                        .header(BaseRequest.Header.builder().userKey(member.getUserKey()).build())
+                        .accountNo(member.getStarterAccountNo())
+                        .build()
+        );
+
+        InquireDemandDepositAccountBalanceResponse.Record record = response.getRecord();
+        Long accountBalance = record.getAccountBalance();
+
+        int balance = accountBalance.intValue();
+
+        return MemberStarterAccountResponse.builder()
+                .memberId(memberId)
+                .starterBalance(balance)
+                .build();
+    }
 
 
 

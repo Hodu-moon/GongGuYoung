@@ -44,6 +44,8 @@ public class PaymentController {
         return ResponseEntity.ok("성공적으로 취소하였습니다.");
     }
 
+
+
     @GetMapping("/bnpl/processing")
     @Operation(summary = "진행중인 BNPL 확인 ", description = "진행중인 BNPL 확인, paymentId,  item name, item image url, bnpl status (PROCESSING, DONE), bnpl amount(얼마 갚아야 하는지 ) 정보를 담고 있음")
     public ResponseEntity<List<ProcessingBnplResponse>> getProcessingBNPL(@RequestParam Long memberId) {
@@ -84,8 +86,6 @@ public class PaymentController {
 
     @Operation(summary = "작업중")
     public ResponseEntity<?> increaseBnplLimit(/* Long memberId, int limit */){
-
-
 
 
         return ResponseEntity.ok("성공적으로 처리 되었습니다.");
