@@ -22,31 +22,37 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GroupPurchaseControllerImpl implements GroupPurchaseController {
 
-  private final GroupPurchaseService groupPurchaseService;
+    private final GroupPurchaseService groupPurchaseService;
 
-  @PostMapping
-  @Override
-  public ResponseEntity<GroupPurchaseResponse> createGroupPurchase(@RequestBody CreateGroupPurchaseRequest request) {
-    GroupPurchaseResponse groupPurchase = groupPurchaseService.createGroupPurchaseAndRegisterScheduling(request);
-    return ResponseEntity.ok(groupPurchase);
-  }
+    @PostMapping
+    @Override
+    public ResponseEntity<GroupPurchaseResponse> createGroupPurchase(@RequestBody CreateGroupPurchaseRequest request) {
+        GroupPurchaseResponse groupPurchase = groupPurchaseService.createGroupPurchaseAndRegisterScheduling(request);
+        return ResponseEntity.ok(groupPurchase);
+    }
 
-  @GetMapping
-  @Override
-  public ResponseEntity<List<GroupPurchaseResponse>> getAllGroupPurchases() {
-    List<GroupPurchaseResponse> groupPurchases = groupPurchaseService.getAllGroupPurchases();
-    return ResponseEntity.ok(groupPurchases);
-  }
+    @GetMapping
+    @Override
+    public ResponseEntity<List<GroupPurchaseResponse>> getAllGroupPurchases() {
+        List<GroupPurchaseResponse> groupPurchases = groupPurchaseService.getAllGroupPurchases();
+        return ResponseEntity.ok(groupPurchases);
+    }
 
-  @GetMapping("/{id}")
-  @Override
-  public ResponseEntity<GroupPurchaseResponse> getGroupPurchase(
-      @PathVariable Long id,
-      @RequestParam(defaultValue = "false") boolean increaseViewCount) {
-    GroupPurchaseResponse groupPurchase = increaseViewCount 
-        ? groupPurchaseService.getGroupPurchaseByIdWithViewCount(id)
-        : groupPurchaseService.getGroupPurchaseById(id);
-    return ResponseEntity.ok(groupPurchase);
-  }
+    @GetMapping("/{id}")
+    @Override
+    public ResponseEntity<GroupPurchaseResponse> getGroupPurchase(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean increaseViewCount) {
+        GroupPurchaseResponse groupPurchase = increaseViewCount
+                ? groupPurchaseService.getGroupPurchaseByIdWithViewCount(id)
+                : groupPurchaseService.getGroupPurchaseById(id);
+        return ResponseEntity.ok(groupPurchase);
+    }
 
+    @GetMapping("/member/{memberId}")
+    @Override
+    public ResponseEntity<List<GroupPurchaseResponse>> getGroupPurhcaseByMemberId(@PathVariable Long memberId) {
+        List<GroupPurchaseResponse> groupPurchases = groupPurchaseService.getAllGroupPurchasesByMemberId(memberId);
+        return ResponseEntity.ok(groupPurchases);
+    }
 }
