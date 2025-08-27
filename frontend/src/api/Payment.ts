@@ -4,6 +4,7 @@ import { api } from "@/api/api";
 export interface BNPLRemain {
     memberId:number;
     remain: number;
+    bnplLimit: number;
 }
 
 export interface BNPLItem{
@@ -97,6 +98,24 @@ export async function postBnplRepay(repayData:BnplRePay):Promise<boolean>{
         return response.status === 200;
     }catch(error){
         console.error("Failed to post BNPL repay:", error);
+        return false;
+    }
+}
+
+export interface BnplLimitUpdate{
+    memberId: number;
+    newLimit: number;
+}
+
+export async function updateBnplLimit(limitData: BnplLimitUpdate): Promise<boolean>{
+    try{
+        const response = await api.post(`/api/v1/members/${limitData.memberId}/bnpl-limit-update`, {
+            limit: limitData.newLimit
+        });
+        console.log("BNPL 한도 업데이트 요청 ", response);
+        return response.status === 200;
+    }catch(error){
+        console.error("Failed to update BNPL limit:", error);
         return false;
     }
 }
