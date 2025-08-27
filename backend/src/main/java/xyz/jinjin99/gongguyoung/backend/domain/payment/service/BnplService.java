@@ -45,6 +45,7 @@ public class BnplService {
 
         return BNPLRemainResponse.builder()
                 .remain(record.getAccountBalance())
+                .bnplLimit((long) member.getBnplLimit())
                 .memberId(memberId)
                 .build();
     }
