@@ -7,9 +7,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.request.SignupRequest;
+import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.BNPLLimitUpdateResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.MemberStarterAccountResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.SignupResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.service.MemberService;
+import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.request.BNPLLimitUpdateRequest;
 
 @Tag(name="회원", description = "회원 관련 API")
 @RestController
@@ -32,6 +34,20 @@ public class MemberController {
         MemberStarterAccountResponse starterBalance = memberService.getStarterBalance(id);
 
         return ResponseEntity.ok(starterBalance);
+    }
+
+    @PostMapping("/{id}/bnpl-limit-update")
+    @Operation(summary = "작업중")
+    public ResponseEntity<BNPLLimitUpdateResponse> updateBnplLimit(
+            @PathVariable Long id,
+            @RequestBody BNPLLimitUpdateRequest request
+            ){
+
+        int limit = request.getLimit();
+
+        BNPLLimitUpdateResponse bnplLimitUpdateResponse = memberService.updateBnplLimit(id, limit);
+
+        return ResponseEntity.ok(bnplLimitUpdateResponse);
     }
 
 }

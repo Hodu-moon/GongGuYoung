@@ -55,4 +55,8 @@ public class Member {
         this.name = name;
         this.email = email;
     }
+
+    public void updateBnplLimit(int limit){
+        this.bnplLimit = limit;
+    }
 }

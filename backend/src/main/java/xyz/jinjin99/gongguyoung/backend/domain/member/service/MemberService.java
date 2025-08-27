@@ -13,7 +13,9 @@ import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.request.*;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.CreateDemandDepositAccountResponse;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.InquireDemandDepositAccountBalanceResponse;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.InquireDemandDepositAccountListResponse;
+import xyz.jinjin99.gongguyoung.backend.client.finopen.dto.response.UpdateDemandDepositAccountDepositResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.request.SignupRequest;
+import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.BNPLLimitUpdateResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.MemberAccountsNo;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.MemberStarterAccountResponse;
 import xyz.jinjin99.gongguyoung.backend.domain.member.dto.response.SignupResponse;
@@ -211,6 +213,43 @@ public class MemberService {
                 .build();
     }
 
+
+
+    // bnpl limit update 함수
+
+    public BNPLLimitUpdateResponse updateBnplLimit(Long memberId, int limit){
+        Member member = getMember(memberId);
+
+        // 10만원
+        int bnplLimit = member.getBnplLimit();
+
+        // 리미트가 5만원으로 내리려고 함
+        if(bnplLimit > limit){
+            throw new RuntimeException("현재 bnpl 한도보다 업데이트 하려는 한도가 낮습니다.");
+        }
+
+//        limit - bnplLimit -> 추가할 값
+
+        member.updateBnplLimit(limit);
+
+        UpdateDemandDepositAccountDepositResponse bnplUpdate = demandDepositClient.updateDemandDepositAccountDeposit(
+                UpdateDemandDepositAccountDepositRequest.builder()
+                        .header(BaseRequest.Header.builder().userKey(member.getUserKey()).build())
+                        .accountNo(member.getFlexAccountNo())
+                        .transactionBalance((long) limit - bnplLimit)
+                        .transactionSummary("bnpl 한도 업데이트")
+                        .build()
+        );
+
+        // 이러면
+
+
+        return BNPLLimitUpdateResponse.builder()
+                .previousBnplLimit(bnplLimit)
+                .updateBnplLimit(limit)
+                .build();
+
+    }
 
 
 }
