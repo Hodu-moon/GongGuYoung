@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.client.DemandDepositClient;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.client.ManagerClient;
 import xyz.jinjin99.gongguyoung.backend.client.finopen.client.MemberClient;
@@ -191,6 +192,7 @@ public class MemberService {
     }
 
 
+    @Transactional
     public MemberStarterAccountResponse  getStarterBalance(Long memberId){
         Member member = getMember(memberId);
 
@@ -217,6 +219,7 @@ public class MemberService {
 
     // bnpl limit update 함수
 
+    @Transactional
     public BNPLLimitUpdateResponse updateBnplLimit(Long memberId, int limit){
         Member member = getMember(memberId);
 

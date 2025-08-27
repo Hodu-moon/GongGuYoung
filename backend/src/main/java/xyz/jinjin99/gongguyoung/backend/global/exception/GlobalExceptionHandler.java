@@ -29,6 +29,22 @@ public class GlobalExceptionHandler {
                 .body(errorResponse);
     }
 
+    //IllegalArgumentException
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleHttpClientErrorException(IllegalArgumentException exception) {
+
+        ErrorResponse errorResponse = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), exception.getMessage());
+        return ResponseEntity.badRequest()
+                .body(errorResponse);
+    }
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleRuntiemException(RuntimeException exception){
+
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), exception.getMessage()));
+    }
+
+
     @ExceptionHandler(MemberAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleAlreadyExistsException(MemberAlreadyExistsException exception) {
 
