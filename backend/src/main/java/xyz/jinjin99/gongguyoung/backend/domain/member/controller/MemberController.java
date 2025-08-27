@@ -37,7 +37,7 @@ public class MemberController {
     }
 
     @PostMapping("/{id}/bnpl-limit-update")
-    @Operation(summary = "작업중")
+    @Operation(summary = "BNPL 한도 업데이트", description = "bnpl 한도 업데이트 , 현재 리밋 < 업데이트 하려는 리밋 일 때만 가능 ")
     public ResponseEntity<BNPLLimitUpdateResponse> updateBnplLimit(
             @PathVariable Long id,
             @RequestBody BNPLLimitUpdateRequest request
