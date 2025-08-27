@@ -465,10 +465,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <Star className="h-6 w-6 text-yellow-500" />
-                    전체 공동구매
-                    <Badge variant="secondary" className="ml-2">
-                      {filteredCampaigns.length}개
-                    </Badge>
+                    전체 공동구매 {filteredCampaigns.length}개
                   </h2>
                 </div>
 
