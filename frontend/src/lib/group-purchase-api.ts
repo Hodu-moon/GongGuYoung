@@ -27,6 +27,26 @@ export interface ParticipantData {
   groupPurchase: GroupPurchaseData;
 }
 
+// ===== 새로운 회원 참여 공구 API 타입 =====
+export interface MemberGroupPurchaseData {
+  id: number;
+  title: string;
+  context: string;
+  targetCount: number;
+  currentCount: number;
+  status: string;
+  endAt: string;
+  createdAt: string;
+  productId: number;
+  productName: string;
+  productPrice: number;
+  productImageUrl: string;
+  productDescription: string;
+  viewCount: number;
+  isPaid: boolean; // 해당 회원의 결제 여부
+  joinedAt: string; // 참여 일시
+}
+
 // ===== UI에서 쓰기 쉬운 타입 =====
 export type UICampaign = {
   id: string;
@@ -213,4 +233,16 @@ export class GroupPurchaseApi {
   //     },
   //   ];
   // }
+
+  // 새로운 API: 회원의 참여한 공구 목록 조회
+  static async getMemberGroupPurchases(memberId: string): Promise<MemberGroupPurchaseData[]> {
+    try {
+      const response = await api.get(`${API_BASE_URL}/group-purchase/member/${memberId}`);
+      console.log('Member group purchases response:', response.data);
+      return response.data || [];
+    } catch (error) {
+      console.error('Failed to fetch member group purchases:', error);
+      return [];
+    }
+  }
 }

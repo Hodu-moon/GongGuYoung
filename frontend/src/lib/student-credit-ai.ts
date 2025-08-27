@@ -527,17 +527,111 @@ ${complexFactorsText}
 3. **미래 변화 예측**: 현재 데이터로부터 미래 상환 능력 변화 예측
 4. **개인화된 권장사항**: 해당 학생만의 특성에 맞는 맞춤형 금융 조언
 
-기본 규칙:
-- **필수 조건**: 학생증 + 재학증명서 미제출시 → 한도 0원 (절대 규칙)
-- 기본 한도: 10만원 (필수 조건 충족 시)
-- 학점/출석률/활동 보너스는 상호 보완적으로 평가
-- 최대 한도: 50만원 (AI 판단 시 30만원 제한 해제)
+**정확한 한도 계산 규칙 (반드시 따르세요):**
+
+1. **필수 조건 확인**: 
+   - 학생증: ${studentData.hasStudentCard ? '✓' : '✗'}
+   - 재학증명서: ${studentData.hasEnrollmentCertificate ? '✓' : '✗'}
+   - → 둘 다 있어야 기본 10만원, 하나라도 없으면 0원
+
+2. **기본 한도**: 10만원 (필수 조건 충족 시)
+
+3. **1단계 활동 기반 증액 계산**:
+   - 학점 ${studentData.gpa}/4.5 → ${studentData.gpa >= 4.0 ? '+10만원' : studentData.gpa >= 3.5 ? '+5만원' : '+0원'}
+   - 출석률 ${studentData.attendanceRate}% → ${studentData.attendanceRate >= 90 ? '+5만원' : '+0원'}
+   - 장학금 수혜: ${studentData.scholarshipHistory ? '✓ +5만원' : '✗ +0원'}
+   - 학생회 활동: ${studentData.studentCouncilActivity ? '✓ +5만원' : '✗ +0원'}
+   - 동아리 활동: ${studentData.clubActivity ? '✓ +5만원' : '✗ +0원'}
+   - 부모 동의서: ${studentData.parentConsent ? '✓ +5만원' : '✗ +0원'}
+   
+4. **1단계 예상 총액**: 10만원 + ${
+  (studentData.gpa >= 4.0 ? 10 : studentData.gpa >= 3.5 ? 5 : 0) +
+  (studentData.attendanceRate >= 90 ? 5 : 0) +
+  (studentData.scholarshipHistory ? 5 : 0) +
+  (studentData.studentCouncilActivity ? 5 : 0) +
+  (studentData.clubActivity ? 5 : 0) +
+  (studentData.parentConsent ? 5 : 0)
+}만원 = ${10 + 
+  (studentData.gpa >= 4.0 ? 10 : studentData.gpa >= 3.5 ? 5 : 0) +
+  (studentData.attendanceRate >= 90 ? 5 : 0) +
+  (studentData.scholarshipHistory ? 5 : 0) +
+  (studentData.studentCouncilActivity ? 5 : 0) +
+  (studentData.clubActivity ? 5 : 0) +
+  (studentData.parentConsent ? 5 : 0)
+}만원
+
+5. **위험도 점수 계산 (0~100, 낮을수록 안전)**:
+   - 기본 위험도: 50점
+   - 학점 조정: ${studentData.gpa >= 4.0 ? '-20점' : studentData.gpa >= 3.5 ? '-10점' : studentData.gpa < 2.5 ? '+20점' : '0점'}
+   - 출석률 조정: ${studentData.attendanceRate >= 95 ? '-15점' : studentData.attendanceRate >= 90 ? '-10점' : studentData.attendanceRate < 70 ? '+20점' : '0점'}
+   - 장학금 수혜: ${studentData.scholarshipHistory ? '-5점' : '0점'}
+   - 학생회 활동: ${studentData.studentCouncilActivity ? '-5점' : '0점'}
+   - 동아리 활동: ${studentData.clubActivity ? '-5점' : '0점'}
+   - 부모 동의서: ${studentData.parentConsent ? '-10점' : '+10점'}
+   - BNPL 상환 이력: ${studentData.previousBnplUsage && studentData.previousBnplUsage.totalUsed > 0 ? 
+     (studentData.previousBnplUsage.onTimePayments / studentData.previousBnplUsage.totalUsed >= 0.9 ? '-15점' :
+      studentData.previousBnplUsage.onTimePayments / studentData.previousBnplUsage.totalUsed >= 0.7 ? '-5점' : '+15점') : '0점'}
+   
+   **예상 위험도**: ${Math.max(0, Math.min(100, 50 +
+     (studentData.gpa >= 4.0 ? -20 : studentData.gpa >= 3.5 ? -10 : studentData.gpa < 2.5 ? 20 : 0) +
+     (studentData.attendanceRate >= 95 ? -15 : studentData.attendanceRate >= 90 ? -10 : studentData.attendanceRate < 70 ? 20 : 0) +
+     (studentData.scholarshipHistory ? -5 : 0) +
+     (studentData.studentCouncilActivity ? -5 : 0) +
+     (studentData.clubActivity ? -5 : 0) +
+     (studentData.parentConsent ? -10 : 10) +
+     (studentData.previousBnplUsage && studentData.previousBnplUsage.totalUsed > 0 ? 
+       (studentData.previousBnplUsage.onTimePayments / studentData.previousBnplUsage.totalUsed >= 0.9 ? -15 :
+        studentData.previousBnplUsage.onTimePayments / studentData.previousBnplUsage.totalUsed >= 0.7 ? -5 : 15) : 0)
+   ))}점
+
+6. **2단계 AI 추가 증액**: 위 금액에서 AI가 추가로 최대 20만원 더 증액 가능
+
+7. **최대 한도**: 50만원
+
+**중요: bnplLimit은 반드시 위의 1단계 계산 결과 이상이어야 합니다!**
+최소한 1단계 계산된 금액(${10 + 
+  (studentData.gpa >= 4.0 ? 10 : studentData.gpa >= 3.5 ? 5 : 0) +
+  (studentData.attendanceRate >= 90 ? 5 : 0) +
+  (studentData.scholarshipHistory ? 5 : 0) +
+  (studentData.studentCouncilActivity ? 5 : 0) +
+  (studentData.clubActivity ? 5 : 0) +
+  (studentData.parentConsent ? 5 : 0)
+}0000원)에서 AI 판단으로 추가 증액을 고려하여 최종 한도를 결정하세요.
 
 다음 JSON 형식으로 응답해주세요:
 {
-  "bnplLimit": 한도금액(숫자),
-  "riskScore": 위험도점수(숫자),
-  "reasons": ["AI 판단 근거1", "AI 판단 근거2", "AI 판단 근거3"],
+  "bnplLimit": ${Math.max(300000, (10 + 
+    (studentData.gpa >= 4.0 ? 10 : studentData.gpa >= 3.5 ? 5 : 0) +
+    (studentData.attendanceRate >= 90 ? 5 : 0) +
+    (studentData.scholarshipHistory ? 5 : 0) +
+    (studentData.studentCouncilActivity ? 5 : 0) +
+    (studentData.clubActivity ? 5 : 0) +
+    (studentData.parentConsent ? 5 : 0)
+  ) * 10000)} 이상의 숫자,
+  "riskScore": ${Math.max(0, Math.min(100, 50 +
+    (studentData.gpa >= 4.0 ? -20 : studentData.gpa >= 3.5 ? -10 : studentData.gpa < 2.5 ? 20 : 0) +
+    (studentData.attendanceRate >= 95 ? -15 : studentData.attendanceRate >= 90 ? -10 : studentData.attendanceRate < 70 ? 20 : 0) +
+    (studentData.scholarshipHistory ? -5 : 0) +
+    (studentData.studentCouncilActivity ? -5 : 0) +
+    (studentData.clubActivity ? -5 : 0) +
+    (studentData.parentConsent ? -10 : 10) +
+    (studentData.previousBnplUsage && studentData.previousBnplUsage.totalUsed > 0 ? 
+      (studentData.previousBnplUsage.onTimePayments / studentData.previousBnplUsage.totalUsed >= 0.9 ? -15 :
+       studentData.previousBnplUsage.onTimePayments / studentData.previousBnplUsage.totalUsed >= 0.7 ? -5 : 15) : 0)
+  ))} 근처의 숫자 (AI 추가 판단으로 ±10점 조정 가능),
+  "reasons": ["위험도 ${Math.max(0, Math.min(100, 50 +
+    (studentData.gpa >= 4.0 ? -20 : studentData.gpa >= 3.5 ? -10 : studentData.gpa < 2.5 ? 20 : 0) +
+    (studentData.attendanceRate >= 95 ? -15 : studentData.attendanceRate >= 90 ? -10 : studentData.attendanceRate < 70 ? 20 : 0) +
+    (studentData.scholarshipHistory ? -5 : 0) +
+    (studentData.studentCouncilActivity ? -5 : 0) +
+    (studentData.clubActivity ? -5 : 0) +
+    (studentData.parentConsent ? -10 : 10)))}점으로 계산됨", "1단계 활동 보너스 ${(10 + 
+    (studentData.gpa >= 4.0 ? 10 : studentData.gpa >= 3.5 ? 5 : 0) +
+    (studentData.attendanceRate >= 90 ? 5 : 0) +
+    (studentData.scholarshipHistory ? 5 : 0) +
+    (studentData.studentCouncilActivity ? 5 : 0) +
+    (studentData.clubActivity ? 5 : 0) +
+    (studentData.parentConsent ? 5 : 0))}만원 확정", "AI 추가 평가 근거"],
   "aiInsights": {
     "personalityAssessment": "성향 분석 결과",
     "riskFactors": ["주요 위험 요소들"],
@@ -575,14 +669,28 @@ ${complexFactorsText}
     
     const creditResult: CreditResult = JSON.parse(jsonMatch[0]);
     
-    // 필수 조건 재확인 (AI가 실수로 0원이 아닌 값을 준 경우)
+    // 필수 조건 재확인 및 최소 한도 보장
     if (!studentData.hasStudentCard || !studentData.hasEnrollmentCertificate) {
       creditResult.bnplLimit = 0;
       creditResult.riskScore = 100;
     } else {
-      // AI 평가는 더 넓은 범위 허용 (50만원까지)
-      creditResult.bnplLimit = Math.min(Math.max(creditResult.bnplLimit, 50000), 500000);
+      // 1단계 최소 한도 계산
+      const minimumLimit = 100000 + // 기본 10만원
+        (studentData.gpa >= 4.0 ? 100000 : studentData.gpa >= 3.5 ? 50000 : 0) + // 학점
+        (studentData.attendanceRate >= 90 ? 50000 : 0) + // 출석률
+        (studentData.scholarshipHistory ? 50000 : 0) + // 장학금
+        (studentData.studentCouncilActivity ? 50000 : 0) + // 학생회
+        (studentData.clubActivity ? 50000 : 0) + // 동아리
+        (studentData.parentConsent ? 50000 : 0); // 부모동의
+      
+      // AI가 최소 한도보다 낮게 평가한 경우 보정
+      creditResult.bnplLimit = Math.max(creditResult.bnplLimit, minimumLimit);
+      
+      // 최대 한도 50만원 제한
+      creditResult.bnplLimit = Math.min(creditResult.bnplLimit, 500000);
       creditResult.riskScore = Math.min(Math.max(creditResult.riskScore, 0), 100);
+      
+      console.log(`최소 한도: ${minimumLimit.toLocaleString()}원, AI 결과: ${creditResult.bnplLimit.toLocaleString()}원`);
     }
     
     return creditResult;
@@ -667,11 +775,11 @@ ${studentData.personalityTraits.responses.map((response, index) =>
 };
 
 /**
- * 폴백: 규칙 기반 신용평가
+ * 폴백: 규칙 기반 신용평가 (새로운 한도 체계)
  */
 const fallbackCreditEvaluation = (studentData: StudentData): CreditResult => {
   let limit = 0;
-  let riskScore = 50;
+  let riskScore = 50; // 기본 위험도
   const reasons: string[] = [];
   
   // 기본 인증 확인
@@ -679,55 +787,126 @@ const fallbackCreditEvaluation = (studentData: StudentData): CreditResult => {
     return {
       bnplLimit: 0,
       riskScore: 100,
-      reasons: ['기본 인증(학생증, 재학증명서)이 필요합니다']
+      reasons: ['기본 인증(학생증, 재학증명서)이 필요합니다'],
+      aiInsights: {
+        personalityAssessment: '기본 인증 미완료로 평가 불가',
+        riskFactors: ['필수 서류 미제출'],
+        strengths: [],
+        recommendations: '학생증과 재학증명서를 제출한 후 재평가 받으시기 바랍니다'
+      }
     };
   }
   
-  // 기본 한도
+  // 1단계: 기본 한도 10만원
   limit = 100000;
-  reasons.push('기본 인증 완료 (10만원)');
+  reasons.push('기본 한도 10만원 (필수 조건 충족)');
   
-  // 학점 평가
+  // 2단계: 활동 기반 증액 (최대 20만원 추가)
+  let activityBonus = 0;
+  
+  // 학점 평가 (3.5이상 -> 5만원, 4.0이상 -> 10만원)
   if (studentData.gpa >= 4.0) {
-    limit += 150000;
+    activityBonus += 100000;
     riskScore -= 20;
-    reasons.push('우수한 학점 (4.0+) 보너스 +15만원');
+    reasons.push('우수한 학점 (4.0+) +10만원, 위험도 -20점');
   } else if (studentData.gpa >= 3.5) {
-    limit += 100000;
+    activityBonus += 50000;
     riskScore -= 10;
-    reasons.push('양호한 학점 (3.5+) 보너스 +10만원');
+    reasons.push('양호한 학점 (3.5+) +5만원, 위험도 -10점');
   } else if (studentData.gpa < 2.5) {
     riskScore += 20;
-    reasons.push('낮은 학점으로 위험도 증가');
+    reasons.push('낮은 학점 (<2.5) 위험도 +20점');
   }
   
-  // 출석률 평가
+  // 출석률 평가 (90% 이상 -> 5만원)
   if (studentData.attendanceRate >= 95) {
-    limit += 70000;
-    riskScore -= 10;
-    reasons.push('우수한 출석률 (95%+) 보너스 +7만원');
+    activityBonus += 50000;
+    riskScore -= 15;
+    reasons.push('우수한 출석률 (95%+) +5만원, 위험도 -15점');
   } else if (studentData.attendanceRate >= 90) {
-    limit += 50000;
-    riskScore -= 5;
-    reasons.push('양호한 출석률 (90%+) 보너스 +5만원');
+    activityBonus += 50000;
+    riskScore -= 10;
+    reasons.push('양호한 출석률 (90%+) +5만원, 위험도 -10점');
+  } else if (studentData.attendanceRate < 70) {
+    riskScore += 20;
+    reasons.push('낮은 출석률 (<70%) 위험도 +20점');
   }
   
-  // 활동 보너스
+  // 장학금, 학생회, 동아리, 부모동의 각각 5만원씩 (총 20만원)
+  let extraBonus = 0;
   if (studentData.scholarshipHistory) {
-    limit += 30000;
+    extraBonus += 50000;
     riskScore -= 5;
-    reasons.push('장학금 수혜 보너스 +3만원');
+    reasons.push('장학금 수혜 경험 +5만원, 위험도 -5점');
+  }
+  
+  if (studentData.studentCouncilActivity) {
+    extraBonus += 50000;
+    riskScore -= 5;
+    reasons.push('학생회 활동 +5만원, 위험도 -5점');
+  }
+  
+  if (studentData.clubActivity) {
+    extraBonus += 50000;
+    riskScore -= 5;
+    reasons.push('동아리 활동 +5만원, 위험도 -5점');
   }
   
   if (studentData.parentConsent) {
-    limit += 50000;
+    extraBonus += 50000;
     riskScore -= 10;
-    reasons.push('부모 동의 보너스 +5만원');
+    reasons.push('부모 동의서 +5만원, 위험도 -10점');
+  } else {
+    riskScore += 10;
+    reasons.push('부모 동의서 없음, 위험도 +10점');
   }
   
-  // 한도 제한
-  limit = Math.min(limit, 300000);
+  // 총 활동 보너스는 20만원으로 제한
+  activityBonus = Math.min(activityBonus + extraBonus, 200000);
+  limit += activityBonus;
+  
+  // 3단계: AI 기반 추가 증액 (최대 20만원 추가)
+  // 폴백에서는 AI 평가를 간단하게 처리
+  let aiBonus = 0;
+  if (studentData.previousBnplUsage && studentData.previousBnplUsage.totalUsed > 0) {
+    const successRate = studentData.previousBnplUsage.onTimePayments / studentData.previousBnplUsage.totalUsed;
+    if (successRate >= 0.9) {
+      aiBonus += 150000;
+      riskScore -= 15;
+      reasons.push('우수한 BNPL 상환 이력 (90%+) AI 보너스 +15만원, 위험도 -15점');
+    } else if (successRate >= 0.7) {
+      aiBonus += 100000;
+      riskScore -= 5;
+      reasons.push('양호한 BNPL 상환 이력 (70%+) AI 보너스 +10만원, 위험도 -5점');
+    } else {
+      riskScore += 15;
+      reasons.push('BNPL 연체 이력 있음, 위험도 +15점');
+    }
+  }
+  
+  if (studentData.financialBehavior?.hasPartTimeJob && studentData.financialBehavior.monthlyIncome >= 500000) {
+    aiBonus += 50000;
+    riskScore -= 5;
+    reasons.push('안정적인 소득(50만원+)으로 AI 보너스 +5만원, 위험도 -5점');
+  }
+  
+  // AI 보너스 최대 20만원 제한
+  aiBonus = Math.min(aiBonus, 200000);
+  limit += aiBonus;
+  
+  // 전체 한도 최대 50만원 제한
+  limit = Math.min(limit, 500000);
   riskScore = Math.max(Math.min(riskScore, 100), 0);
   
-  return { bnplLimit: limit, riskScore, reasons };
+  return { 
+    bnplLimit: limit, 
+    riskScore, 
+    reasons,
+    aiInsights: {
+      personalityAssessment: '규칙 기반 평가로 제한적 분석',
+      riskFactors: riskScore > 60 ? ['상세한 AI 분석 필요'] : [],
+      strengths: activityBonus > 100000 ? ['우수한 대학 생활 기록'] : ['기본 조건 충족'],
+      recommendations: 'AI 기반 심화 평가를 통해 더 정확한 한도 산정이 가능합니다'
+    }
+  };
 };
