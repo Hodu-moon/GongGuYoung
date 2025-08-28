@@ -45,11 +45,11 @@ export function CampaignFilters({ onFilterChange }: CampaignFiltersProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">전체</SelectItem>
-            <SelectItem value="active">진행중</SelectItem>
-            <SelectItem value="completed">완료</SelectItem>
+            <SelectItem value="WAITING">진행중</SelectItem>
+            <SelectItem value="COMPLETE">완료</SelectItem>
           </SelectContent>
         </Select>
       </div>
-    </div>
+    </div>  
   )
 }
