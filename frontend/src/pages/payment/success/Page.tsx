@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "@/compat/navigation";
 import { useSearchParams } from "react-router-dom";
 import { AuthGuard } from "@/components/auth/auth-guard";
@@ -20,14 +20,18 @@ import {
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { useNotifications } from "@/lib/notification-context";
 import Image from "@/compat/NextImage";
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
   const [searchParams] = useSearchParams();
   const { user, logout } = useAuth();
+  const { addNotification } = useNotifications();
   const [isLoading, setIsLoading] = useState(true);
   const [orderData, setOrderData] = useState<any>(null);
+  const [notificationSent, setNotificationSent] = useState(false);
+  const notificationSentRef = useRef(false);
 
   useEffect(() => {
     // URL 파라미터에서 실제 결제 정보 가져오기
@@ -43,6 +47,11 @@ export default function PaymentSuccessPage() {
     const bnplAmount = parseInt(searchParams.get("bnplAmount") || "0");
     const cashAmount = parseInt(searchParams.get("cashAmount") || "0");
 
+    // 이미 알림이 전송되었으면 중단 (useRef 사용)
+    if (notificationSentRef.current) {
+      return;
+    }
+
     setTimeout(() => {
       let paymentMethodText = "일반 계좌";
       let statusText = "결제 완료";
@@ -57,7 +66,7 @@ export default function PaymentSuccessPage() {
         }
       }
 
-      setOrderData({
+      const finalOrderData = {
         orderId: orderId || "ORDER-" + Date.now(),
         campaignId: campaignId || "1",
         productName: productName || "Campbell Biology 11th Edition",
@@ -73,10 +82,31 @@ export default function PaymentSuccessPage() {
         splitPayment,
         bnplAmount,
         cashAmount,
-      });
+      };
+
+      setOrderData(finalOrderData);
+
+      // 알림이 아직 전송되지 않았을 때만 전송 (useRef 사용)
+      if (!notificationSentRef.current) {
+        // 즉시 참조값을 업데이트하여 중복 방지
+        notificationSentRef.current = true;
+        
+        addNotification({
+          userId: user?.id?.toString() || "1",
+          type: "campaign_complete",
+          title: "공구 결제 성공!",
+          message: `${finalOrderData.productName} 공동구매 결제가 완료되었습니다. ${finalOrderData.amount.toLocaleString()}원`,
+          isRead: false,
+          relatedId: finalOrderData.campaignId,
+          actionUrl: `/campaigns/${finalOrderData.campaignId}`,
+          priority: "high",
+        });
+        setNotificationSent(true);
+      }
+
       setIsLoading(false);
     }, 1000);
-  }, [searchParams]);
+  }, [searchParams, addNotification, user?.id]);
 
   if (isLoading) {
     return (
