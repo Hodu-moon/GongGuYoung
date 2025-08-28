@@ -167,11 +167,11 @@ export default function EditCampaignPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="description" className="text-sm font-medium">
-                      상품 설명 *
+                      공구 내용 *
                     </Label>
                     <Textarea
                       id="description"
-                      placeholder="상품에 대한 자세한 설명을 입력하세요..."
+                      placeholder="공구에 대한 자세한 설명을 입력하세요..."
                       value={formData.description}
                       onChange={(e) => handleInputChange("description", e.target.value)}
                       rows={4}

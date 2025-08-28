@@ -118,7 +118,9 @@ export default function CreateCampaignPage() {
   const handleSubmit = async () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }, 0)
       return
     }
 
@@ -398,7 +400,12 @@ export default function CreateCampaignPage() {
                         type="text"
                         placeholder="상품명으로 검색... (예: 애플 에어팟)"
                         value={searchQuery}
-                        onChange={(e) => handleSearch(e.target.value)}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSearch(searchQuery)
+                          }
+                        }}
                         className="pl-10 pr-10 h-12 text-base border-2 focus:border-purple-600 rounded-xl"
                       />
                       {searchQuery && (
@@ -672,11 +679,11 @@ export default function CreateCampaignPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="context" className="text-sm font-semibold text-gray-700">
-                      상품 설명 *
+                      공구 설명 *
                     </Label>
                     <Textarea
                       id="context"
-                      placeholder="상품에 대한 자세한 설명을 입력하세요..."
+                      placeholder="공구에 대한 자세한 설명을 입력하세요..."
                       value={formData.context}
                       onChange={(e) => handleInputChange("context", e.target.value)}
                       rows={8}
