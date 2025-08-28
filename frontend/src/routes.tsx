@@ -5,7 +5,6 @@ const Page1 = React.lazy(() => import("@/pages/admin/login/Page"));
 const Page2 = React.lazy(() => import("@/pages/admin/users/Page"));
 const Page3 = React.lazy(() => import("@/pages/auth/login/Page"));
 const Page4 = React.lazy(() => import("@/pages/auth/register/Page"));
-const Page5 = React.lazy(() => import("@/pages/bnpl/Page"));
 const Page6 = React.lazy(() => import("@/pages/campaigns/[id]/edit/Page"));
 const Page7 = React.lazy(() => import("@/pages/campaigns/[id]/Page"));
 const Page8 = React.lazy(() => import("@/pages/create-campaign/Page"));
@@ -16,6 +15,7 @@ const Page12 = React.lazy(() => import("@/pages/notifications/settings/Page"));
 const Page13 = React.lazy(() => import("@/pages/Page"));
 const Page14 = React.lazy(() => import("@/pages/payment/Page"));
 const Page15 = React.lazy(() => import("@/pages/payment/success/Page"));
+const Page16 = React.lazy(() => import("@/pages/bnpl-repay/Page"));
 export const AppRoutes = (
   <>
     <Route
@@ -56,14 +56,6 @@ export const AppRoutes = (
         React.Suspense,
         { fallback: null },
         React.createElement(Page4)
-      )}
-    />
-    <Route
-      path="/bnpl"
-      element={React.createElement(
-        React.Suspense,
-        { fallback: null },
-        React.createElement(Page5)
       )}
     />
     <Route
@@ -144,6 +136,14 @@ export const AppRoutes = (
         React.Suspense,
         { fallback: null },
         React.createElement(Page15)
+      )}
+    />
+    <Route
+      path="/bnpl-repay"
+      element={React.createElement(
+        React.Suspense,
+        { fallback: null },
+        React.createElement(Page16)
       )}
     />
   </>
