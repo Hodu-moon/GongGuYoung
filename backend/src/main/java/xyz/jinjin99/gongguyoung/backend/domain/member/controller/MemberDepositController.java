@@ -14,7 +14,7 @@ import xyz.jinjin99.gongguyoung.backend.domain.member.service.DepositService;
 @RestController
 @Slf4j
 @RequiredArgsConstructor
-@RequestMapping("/members/{memberId}")
+@RequestMapping("api/v1/members/{memberId}")
 @Tag(name = "입금", description = "회원의 계좌에 입금하는 API")
 public class MemberDepositController {
 
