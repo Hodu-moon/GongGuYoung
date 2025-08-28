@@ -10,7 +10,11 @@ import { Textarea } from '../ui/textarea';
 import { updateBnplLimit } from '../../api/Payment';
 import { useAuth } from '../../lib/auth-context';
 
-export const CreditEvaluationForm: React.FC = () => {
+interface CreditEvaluationFormProps {
+  onLimitUpdate?: () => void;
+}
+
+export const CreditEvaluationForm: React.FC<CreditEvaluationFormProps> = ({ onLimitUpdate }) => {
   const { user } = useAuth();
   const [studentData, setStudentData] = useState<StudentData>({
     studentId: '',
@@ -81,6 +85,10 @@ export const CreditEvaluationForm: React.FC = () => {
           if (updateSuccess) {
             console.log('BNPL 한도가 업데이트되었습니다:', creditResult.bnplLimit);
             setLimitUpdated(true);
+            // 콜백 실행하여 부모 컴포넌트의 BNPL 데이터 새로고침
+            if (onLimitUpdate) {
+              onLimitUpdate();
+            }
           } else {
             console.warn('BNPL 한도 업데이트 실패');
             setLimitUpdated(false);

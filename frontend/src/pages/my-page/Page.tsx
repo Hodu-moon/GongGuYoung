@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { mockCampaigns } from "@/lib/mock-data"
 import { GroupPurchaseApi, type GroupPurchaseData, type ParticipantData, type MemberGroupPurchaseData } from "@/lib/group-purchase-api"
 import { fetchBNPLRemain, fetchBNPLItems, postBnplRepay, type BNPLRemain, type BNPLItem } from "@/api/Payment"
+import { CreditEvaluationForm } from "@/components/credit/CreditEvaluationForm"
 import {
   User,
   ShoppingBag,
@@ -41,11 +42,16 @@ export default function MyPage() {
   const { user, logout } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [showCreditEvaluation, setShowCreditEvaluation] = useState(false)
   const [memberGroupPurchases, setMemberGroupPurchases] = useState<MemberGroupPurchaseData[]>([])
   const [isLoadingPurchases, setIsLoadingPurchases] = useState(true)
   const [bnplRemain, setBnplRemain] = useState<BNPLRemain | null>(null)
   const [bnplItems, setBnplItems] = useState<BNPLItem[]>([])
   const [isLoadingBnpl, setIsLoadingBnpl] = useState(true)
+  const [starterBalance, setStarterBalance] = useState<number>(0)
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true)
+  const [depositAmount, setDepositAmount] = useState("")
+  const [isDepositing, setIsDepositing] = useState(false)
   const [profileData, setProfileData] = useState({
     name: user?.fullName || "",
     email: user?.email || "heyoung@university.ac.kr",
@@ -86,24 +92,32 @@ export default function MyPage() {
     loadUserPurchases()
   }, [user?.id])
 
-  // Load BNPL data
+  // Load BNPL data and starter balance
   useEffect(() => {
     const loadBnplData = async () => {
       if (!user?.id) return
       
       setIsLoadingBnpl(true)
+      setIsLoadingBalance(true)
       try {
-        const [remain, items] = await Promise.all([
+        const [remain, items, balanceResponse] = await Promise.all([
           fetchBNPLRemain(user.id),
-          fetchBNPLItems(user.id)
+          fetchBNPLItems(user.id),
+          fetch(`/api/v1/members/${user.id}/starter-balance`)
         ])
         
         setBnplRemain(remain)
         setBnplItems(items || [])
+        
+        if (balanceResponse.ok) {
+          const balanceData = await balanceResponse.json()
+          setStarterBalance(balanceData.starterBalance || 0)
+        }
       } catch (error) {
         console.error('Failed to load BNPL data:', error)
       } finally {
         setIsLoadingBnpl(false)
+        setIsLoadingBalance(false)
       }
     }
 
@@ -202,6 +216,83 @@ export default function MyPage() {
     }
     
     return Math.floor(originalPrice * (1 - discountRate))
+  }
+
+  // BNPL 데이터 새로고침 함수
+  const refreshBnplData = async () => {
+    if (!user?.id) return
+    
+    try {
+      const [remain, items] = await Promise.all([
+        fetchBNPLRemain(user.id),
+        fetchBNPLItems(user.id)
+      ])
+      
+      setBnplRemain(remain)
+      setBnplItems(items || [])
+    } catch (error) {
+      console.error('Failed to refresh BNPL data:', error)
+    }
+  }
+
+  // 총 상환 금액 계산 (BNPL 사용 중인 금액과 동일)
+  const getTotalRepayAmount = () => {
+    return bnplCreditInfo.usedAmount
+  }
+
+  // 입금 처리 함수
+  const handleDeposit = async () => {
+    const amount = parseInt(depositAmount)
+    if (!amount || amount <= 0) {
+      alert('올바른 금액을 입력해주세요.')
+      return
+    }
+    if (!user?.id) {
+      alert('로그인이 필요합니다.')
+      return
+    }
+
+    setIsDepositing(true)
+    console.log('Deposit request:', { userId: user.id, amount })
+    
+    try {
+      const url = `/api/v1/members/${user.id}/deposits`
+      console.log('Deposit URL:', url)
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amount
+        })
+      })
+
+      console.log('Deposit response status:', response.status, response.statusText)
+      
+      if (response.ok) {
+        const responseData = await response.json()
+        console.log('Deposit success:', responseData)
+        alert(`${amount.toLocaleString()}원이 성공적으로 입금되었습니다.`)
+        setDepositAmount("")
+        // 잔액 새로고침
+        const balanceResponse = await fetch(`/api/v1/members/${user.id}/starter-balance`)
+        if (balanceResponse.ok) {
+          const balanceData = await balanceResponse.json()
+          setStarterBalance(balanceData.starterBalance || 0)
+        }
+      } else {
+        const errorData = await response.text()
+        console.error('Deposit error response:', errorData)
+        throw new Error(`입금 실패: ${response.status} ${response.statusText}`)
+      }
+    } catch (error) {
+      console.error('Deposit error:', error)
+      alert('입금 처리 중 오류가 발생했습니다.')
+    } finally {
+      setIsDepositing(false)
+    }
   }
 
   return (
@@ -314,12 +405,10 @@ export default function MyPage() {
                     </div>
                     <div className="text-sm text-purple-600">총 절약 금액</div>
                   </div>
-                  <Link to="/bnpl">
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg hover:shadow-md transition-all duration-200 cursor-pointer">
-                      <div className="text-center mb-3">
-                        <div className="text-lg font-bold text-purple-600">BNPL 한도</div>
-                        <div className="text-xs text-purple-500">클릭하여 자세히 보기</div>
-                      </div>
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg">
+                    <div className="text-center mb-3">
+                      <div className="text-lg font-bold text-purple-600">BNPL 한도</div>
+                    </div>
                       {isLoadingBnpl ? (
                         <div className="text-center py-4">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto"></div>
@@ -356,8 +445,7 @@ export default function MyPage() {
                           </div>
                         </div>
                       )}
-                    </div>
-                  </Link>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -379,8 +467,8 @@ export default function MyPage() {
                     결제 내역
                   </TabsTrigger>
                   <TabsTrigger value="settings" className="flex items-center gap-2">
-                    <Settings className="w-4 h-4" />
-                    설정
+                    <CreditCard className="w-4 h-4" />
+                    한도 관리
                   </TabsTrigger>
                 </TabsList>
 
@@ -717,104 +805,181 @@ export default function MyPage() {
                     </CardContent>
                   </Card>
 
-                  {/* BNPL Status */}
+                  {/* Current Balance Card */}
                   <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <Clock className="w-5 h-5" />
-                          BNPL 결제 현황
-                        </CardTitle>
-                        <Link to="/bnpl">
-                          <Button variant="outline" size="sm" className="bg-transparent">
-                            자세히 보기
-                          </Button>
-                        </Link>
-                      </div>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5" />
+                        보유 금액
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {isLoadingBnpl ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-                          <p className="text-purple-600">BNPL 결제 현황을 불러오는 중...</p>
-                        </div>
-                      ) : bnplItems.length > 0 ? (
-                        <div className="space-y-4">
-                          {bnplItems.map((bnpl) => (
-                            <div
-                              key={bnpl.paymentId}
-                              className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200"
-                            >
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-3">
-                                  <img
-                                    src={bnpl.itemImageUrl || "/placeholder.svg"}
-                                    alt={bnpl.itemName}
-                                    className="w-12 h-12 object-cover rounded-lg"
-                                  />
-                                  <div>
-                                    <h3 className="font-semibold text-purple-800">{bnpl.itemName}</h3>
-                                    <p className="text-sm text-purple-600">{bnpl.groupPurchaseTitle}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {getStatusBadge(bnpl.bnplstatus.toLowerCase())}
-                                  {bnpl.bnplstatus === "PROCESSING" && (
-                                    <Button
-                                      size="sm"
-                                      className="bg-hey-gradient hover:opacity-90 text-white"
-                                      onClick={async () => {
-                                        if (!user?.id) return
-                                        const success = await postBnplRepay({
-                                          paymentId: bnpl.paymentId,
-                                          memberId: user.id
-                                        })
-                                        if (success) {
-                                          alert('BNPL 상환이 완료되었습니다.')
-                                          // 데이터 새로고침
-                                          const [remain, items] = await Promise.all([
-                                            fetchBNPLRemain(user.id),
-                                            fetchBNPLItems(user.id)
-                                          ])
-                                          setBnplRemain(remain)
-                                          setBnplItems(items || [])
-                                        } else {
-                                          alert('BNPL 상환에 실패했습니다.')
-                                        }
-                                      }}
-                                    >
-                                      {bnpl.bnplAmount.toLocaleString()}원 상환
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                                <div>
-                                  <span className="text-purple-500">상환해야 할 금액</span>
-                                  <div className="font-semibold">{bnpl.bnplAmount.toLocaleString()}원</div>
-                                </div>
-                                <div>
-                                  <span className="text-purple-500">결제 상태</span>
-                                  <div className="font-semibold">
-                                    {bnpl.bnplstatus === "PROCESSING" ? "상환 대기중" : "상환 완료"}
-                                  </div>
-                                </div>
-                                <div>
-                                  <span className="text-purple-500">결제 ID</span>
-                                  <div className="font-semibold">#{bnpl.paymentId}</div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                      {isLoadingBalance ? (
+                        <div className="text-center py-6">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+                          <p className="text-green-600">보유 금액을 불러오는 중...</p>
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-purple-600">
-                          <CreditCard className="w-12 h-12 mx-auto mb-4 text-purple-400" />
-                          <p>진행 중인 BNPL 결제가 없습니다.</p>
+                        <div className="space-y-6">
+                          <div className="text-center">
+                            <div className="text-4xl font-bold text-green-600 mb-4">
+                              {starterBalance.toLocaleString()}원
+                            </div>
+                            <p className="text-green-700 mb-4">현재 보유하고 있는 금액입니다</p>
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg">
+                              <p className="text-sm text-green-600">
+                                이 금액으로 공동구매 결제 및 BNPL 상환이 가능합니다
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* 입금 섹션 */}
+                          <div className="border-t pt-6">
+                            <h4 className="text-lg font-semibold text-gray-800 mb-4 text-center">💰 계좌 입금</h4>
+                            <div className="space-y-4">
+                              <div>
+                                <Label htmlFor="depositAmount" className="text-sm font-medium text-gray-700">
+                                  입금할 금액 (원)
+                                </Label>
+                                <div className="mt-2 flex gap-2">
+                                  <Input
+                                    id="depositAmount"
+                                    type="number"
+                                    placeholder="입금할 금액을 입력하세요"
+                                    value={depositAmount}
+                                    onChange={(e) => setDepositAmount(e.target.value)}
+                                    min="1"
+                                    className="flex-1"
+                                    disabled={isDepositing}
+                                  />
+                                  <span className="flex items-center text-gray-600">원</span>
+                                </div>
+                              </div>
+
+                              {/* 빠른 입금 버튼들 */}
+                              <div className="grid grid-cols-4 gap-2">
+                                {[10000, 50000, 100000, 500000].map((amount) => (
+                                  <Button
+                                    key={amount}
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDepositAmount(amount.toString())}
+                                    disabled={isDepositing}
+                                    className="text-xs"
+                                  >
+                                    {amount >= 10000 ? `${amount / 10000}만원` : `${amount.toLocaleString()}원`}
+                                  </Button>
+                                ))}
+                              </div>
+
+                              <Button
+                                onClick={handleDeposit}
+                                disabled={!depositAmount || isDepositing || parseInt(depositAmount) <= 0}
+                                className="w-full bg-green-600 hover:bg-green-700"
+                              >
+                                {isDepositing ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    입금 처리 중...
+                                  </>
+                                ) : (
+                                  `${depositAmount ? parseInt(depositAmount).toLocaleString() : '0'}원 입금하기`
+                                )}
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </CardContent>
                   </Card>
+
+                  {/* BNPL Status */}
+                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-5 h-5" />
+                          BNPL 결제 현황
+                        </div>
+                        {getTotalRepayAmount() > 0 && (
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <div className="text-sm text-gray-600">총 상환 금액</div>
+                              <div className="text-lg font-bold text-red-600">
+                                {getTotalRepayAmount().toLocaleString()}원
+                              </div>
+                            </div>
+                            <Link to="/bnpl-repay">
+                              <Button className="bg-hey-gradient hover:opacity-90 text-white">
+                                상환하기
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingBnpl ? (
+                          <div className="text-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                            <p className="text-purple-600">BNPL 결제 현황을 불러오는 중...</p>
+                          </div>
+                        ) : bnplItems.length > 0 ? (
+                          <div className="space-y-4">
+                            {bnplItems.map((bnpl) => (
+                              <div
+                                key={bnpl.paymentId}
+                                className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200"
+                              >
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-3">
+                                    <img
+                                      src={bnpl.itemImageUrl || "/placeholder.svg"}
+                                      alt={bnpl.itemName}
+                                      className="w-12 h-12 object-cover rounded-lg"
+                                    />
+                                    <div>
+                                      <h3 className="font-semibold text-purple-800">{bnpl.itemName}</h3>
+                                      <p className="text-sm text-purple-600">{bnpl.groupPurchaseTitle}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {getStatusBadge(bnpl.bnplstatus.toLowerCase())}
+                                    {bnpl.bnplstatus === "PROCESSING" && (
+                                      <div className="text-sm font-semibold text-red-600">
+                                        {bnpl.bnplAmount.toLocaleString()}원
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                  <div>
+                                    <span className="text-purple-500">상환해야 할 금액</span>
+                                    <div className="font-semibold">{bnpl.bnplAmount.toLocaleString()}원</div>
+                                  </div>
+                                  <div>
+                                    <span className="text-purple-500">결제 상태</span>
+                                    <div className="font-semibold">
+                                      {bnpl.bnplstatus === "PROCESSING" ? "상환 대기중" : "상환 완료"}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <span className="text-purple-500">결제 ID</span>
+                                    <div className="font-semibold">#{bnpl.paymentId}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-purple-600">
+                            <CreditCard className="w-12 h-12 mx-auto mb-4 text-purple-400" />
+                            <p>진행 중인 BNPL 결제가 없습니다.</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
                 </TabsContent>
 
                 {/* Settings Tab */}
@@ -822,64 +987,130 @@ export default function MyPage() {
                   <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Settings className="w-5 h-5" />
-                        계정 설정
+                        <CreditCard className="w-5 h-5" />
+                        BNPL 한도 관리
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">알림 설정</h3>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-lg">
-                            <div>
-                              <div className="font-medium">새로운 공구 알림</div>
-                              <div className="text-sm text-purple-600">관심 카테고리의 새 공구가 등록될 때 알림</div>
+                      {/* BNPL 한도 현황 */}
+                      <div className="grid md:grid-cols-2 gap-6 mb-6">
+                        {/* 한도 사용 현황 */}
+                        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-blue-800">
+                              <CreditCard className="w-5 h-5" />
+                              BNPL 한도 사용 현황
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {isLoadingBnpl ? (
+                              <div className="text-center py-8">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                <p className="text-blue-600">BNPL 정보를 불러오는 중...</p>
+                              </div>
+                            ) : (
+                              <>
+                                {bnplCreditInfo.hasNoLimit ? (
+                                  <div className="text-center py-4">
+                                    <div className="text-2xl font-bold text-orange-600 mb-2">
+                                      한도가 없습니다
+                                    </div>
+                                    <div className="text-sm text-orange-700 mb-4">
+                                      AI 신용평가를 통해 BNPL 한도를 받아보세요
+                                    </div>
+                                    <div className="text-lg font-semibold text-gray-600">
+                                      최소 10만원 ~ 최대 50만원
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="text-center">
+                                      <div className="text-3xl font-bold text-blue-600">
+                                        {bnplCreditInfo.availableAmount.toLocaleString()}원
+                                      </div>
+                                      <div className="text-sm text-blue-700">사용 가능한 잔여 금액</div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      <div className="text-center p-3 bg-white/50 rounded-lg">
+                                        <div className="font-bold text-blue-600">
+                                          {bnplCreditInfo.totalLimit.toLocaleString()}원
+                                        </div>
+                                        <div className="text-blue-700">총 한도</div>
+                                      </div>
+                                      <div className="text-center p-3 bg-white/50 rounded-lg">
+                                        <div className="font-bold text-red-600">
+                                          {bnplCreditInfo.usedAmount.toLocaleString()}원
+                                        </div>
+                                        <div className="text-red-700">사용 중</div>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* 한도 증액 신청 */}
+                        <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-green-100">
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-green-800">
+                              <TrendingUp className="w-5 h-5" />
+                              한도 증액 신청
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="text-center">
+                              <div className="text-lg font-semibold text-green-700 mb-2">
+                                AI 기반 신용평가로
+                              </div>
+                              <div className="text-2xl font-bold text-green-600">
+                                최대 50만원
+                              </div>
+                              <div className="text-sm text-green-700">한도 증액 가능</div>
                             </div>
-                            <Button variant="outline" size="sm">
-                              설정
-                            </Button>
-                          </div>
-                          <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-lg">
-                            <div>
-                              <div className="font-medium">결제 알림</div>
-                              <div className="text-sm text-purple-600">BNPL 결제일 및 공구 마감 알림</div>
+                            
+                            <div className="space-y-2 text-sm text-green-700">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                                1단계: 학점, 출석률, 활동 평가 (최대 30만원)
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                                2단계: AI 신용평가로 추가 20만원 증액
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                                필수: 학생증 + 재학증명서 (기본 10만원)
+                              </div>
                             </div>
-                            <Button variant="outline" size="sm">
-                              설정
+                            
+                            <Button 
+                              onClick={() => setShowCreditEvaluation(!showCreditEvaluation)}
+                              className="w-full bg-green-600 hover:bg-green-700"
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              {showCreditEvaluation ? '평가 폼 닫기' : 'AI 한도 평가하기'}
                             </Button>
-                          </div>
-                        </div>
+                          </CardContent>
+                        </Card>
                       </div>
 
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">보안 설정</h3>
-                        <div className="space-y-3">
-                          <Button variant="outline" className="w-full justify-start bg-transparent">
-                            비밀번호 변경
-                          </Button>
-                          <Button variant="outline" className="w-full justify-start bg-transparent">
-                            2단계 인증 설정
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">기타</h3>
-                        <div className="space-y-3">
-                          <Button variant="outline" className="w-full justify-start bg-transparent">
-                            개인정보 처리방침
-                          </Button>
-                          <Button variant="outline" className="w-full justify-start bg-transparent">
-                            서비스 이용약관
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start text-red-600 hover:text-red-700 bg-transparent"
-                          >
-                            회원 탈퇴
-                          </Button>
-                        </div>
-                      </div>
+                      {/* AI 신용평가 폼 */}
+                      {showCreditEvaluation && (
+                        <Card className="border-0 shadow-lg bg-white">
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-purple-800">
+                              <TrendingUp className="w-5 h-5" />
+                              AI 기반 학생 신용평가
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <CreditEvaluationForm onLimitUpdate={refreshBnplData} />
+                          </CardContent>
+                        </Card>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>
