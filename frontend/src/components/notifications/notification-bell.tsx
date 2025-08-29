@@ -18,7 +18,7 @@ export function NotificationBell() {
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="relative">
-          <Bell className="w-5 h-5" />
+          <Bell className="w-5 h-5 text-white" />
           {unreadCount > 0 && (
             <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs">
               {unreadCount > 9 ? "9+" : unreadCount}
