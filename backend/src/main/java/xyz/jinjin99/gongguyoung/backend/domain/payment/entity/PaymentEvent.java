@@ -120,5 +120,9 @@ public class PaymentEvent {
         status = PaymentStatus.REFUNDED;
     }
 
+    public void payBNPL(int amount){
+        this.bnplAmount -= amount;
+    }
+
 
 }
