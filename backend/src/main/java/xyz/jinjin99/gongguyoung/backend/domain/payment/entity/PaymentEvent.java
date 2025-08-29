@@ -8,11 +8,9 @@ import org.springframework.data.annotation.LastModifiedDate;
 import xyz.jinjin99.gongguyoung.backend.domain.member.entity.Member;
 import xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.entity.GroupPurchase;
 import xyz.jinjin99.gongguyoung.backend.global.enums.BnplStatus;
-import xyz.jinjin99.gongguyoung.backend.global.enums.PaymentMethod;
 import xyz.jinjin99.gongguyoung.backend.global.enums.PaymentStatus;
 import xyz.jinjin99.gongguyoung.backend.global.enums.PaymentType;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
