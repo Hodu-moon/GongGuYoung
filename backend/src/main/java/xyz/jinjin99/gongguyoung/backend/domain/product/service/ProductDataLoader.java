@@ -3,6 +3,7 @@ package xyz.jinjin99.gongguyoung.backend.domain.product.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import xyz.jinjin99.gongguyoung.backend.domain.product.entity.Product;
 import xyz.jinjin99.gongguyoung.backend.domain.product.repository.ProductRepository;
@@ -13,6 +14,7 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@Order(1)
 public class ProductDataLoader implements CommandLineRunner {
 
     private final ProductRepository productRepository;
