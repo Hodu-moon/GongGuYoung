@@ -213,6 +213,9 @@ Backend 서버 실행 후 다음 URL에서 API 문서를 확인할 수 있습니
 
 - `GET /api/v1/products` - 상품 목록 조회
 - `GET /api/v1/products/{id}` - 상품 상세 조회
+## 🐬 ERD
+
+<img width="500" height="1024" alt="ERD" src="https://github.com/user-attachments/assets/2965c7ac-d21e-44ff-ab68-22755776740a" />
 
 ## 🚀 배포 및 운영
 
