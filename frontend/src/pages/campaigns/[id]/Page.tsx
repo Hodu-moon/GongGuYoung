@@ -36,10 +36,7 @@ const inFlight = new Map<string, Promise<UICampaign | null>>();
 const dataCache = new Map<string, UICampaign | null>();
 
 function fetchCampaignOnce(id: string) {
-  // 이미 받아둔 데이터가 있으면 즉시 resolve
-  if (dataCache.has(id)) {
-    return Promise.resolve(dataCache.get(id) ?? null);
-  }
+
   // 진행 중 요청이 있으면 그걸 그대로 사용
   if (inFlight.has(id)) {
     return inFlight.get(id)!;
