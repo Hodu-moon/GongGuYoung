@@ -75,7 +75,7 @@ public class PaymentController {
             PayBNPLRequest request
     ){
 //        bnplService.payBnpl(request.getPaymentId(), request.getMemberId());
-        bnplService.paySubBNPL(request.getPaymentId(), request.getMemberId(), request.getMoneyToPay());
+        bnplService.paySubBNPL(request.getPaymentId(), request.getMemberId(), request.getAmount());
         return ResponseEntity.ok("성공적으로 처리 되었습니다.");
 
     }

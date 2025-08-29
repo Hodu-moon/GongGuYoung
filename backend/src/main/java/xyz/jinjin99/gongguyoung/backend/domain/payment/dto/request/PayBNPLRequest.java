@@ -19,6 +19,6 @@ public class PayBNPLRequest {
     @NotNull @Schema(description = "memberId 입니다.")
     Long memberId;
     @NotNull @Schema(description = "갚을 돈 ")
-    Integer moneyToPay;
+    Integer amount;
 
 }

@@ -95,22 +95,14 @@ public class PaymentEvent {
         if (this.updatedAt == null) {
             this.updatedAt = LocalDateTime.now();
         }
-        validate();
     }
     
     @PreUpdate
     private void preUpdate() {
         this.updatedAt = LocalDateTime.now();
-        validate();
     }
     
-    private void validate() {
-        long i = this.immediateAmount;
-        long b = this.bnplAmount;
-        if (this.amount != i + b) {
-            throw new IllegalStateException("amount must equal instantAmount + bnplAmount");
-        }
-    }
+
 
     public void markBnplStatusDONE(){
         bnplStatus = BnplStatus.DONE;
