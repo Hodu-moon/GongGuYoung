@@ -14,7 +14,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class AccountServiceImpl implements AccountService {
+public class GroupPurchaseAccountServiceImpl implements GroupPurchaseAccountService {
 
     private final DemandDepositClient demandDepositClient;
     private final MemberClient memberClient;

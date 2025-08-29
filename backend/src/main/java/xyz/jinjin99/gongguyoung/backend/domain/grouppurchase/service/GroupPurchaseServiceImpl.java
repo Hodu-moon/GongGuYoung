@@ -25,7 +25,7 @@ public class GroupPurchaseServiceImpl implements GroupPurchaseService {
     private final GroupPurchaseRepository groupPurchaseRepository;
     private final ProductRepository productRepository;
     private final DelayedJobService delayedJobService;
-    private final AccountService accountService;
+    private final GroupPurchaseAccountService accountService;
 
     @Override
     public GroupPurchaseResponse createGroupPurchaseAndRegisterScheduling(CreateGroupPurchaseRequest request) {

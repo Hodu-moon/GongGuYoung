@@ -20,7 +20,7 @@ import xyz.jinjin99.gongguyoung.backend.global.enums.GroupPurchaseStatus;
 public class GroupPurhcaseDataLoader implements CommandLineRunner{
 
   private final GroupPurchaseRepository groupPurchaseRepository;
-  private final AccountService accountService;
+  private final GroupPurchaseAccountService accountService;
   private final ProductRepository productRepository;
   @Override
   public void run(String... args) throws Exception {

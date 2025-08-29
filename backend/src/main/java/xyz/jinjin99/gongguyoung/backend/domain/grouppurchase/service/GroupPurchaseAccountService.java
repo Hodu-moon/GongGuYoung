@@ -1,5 +1,5 @@
 package xyz.jinjin99.gongguyoung.backend.domain.grouppurchase.service;
 
-public interface AccountService {
+public interface GroupPurchaseAccountService {
     String createGroupPurchaseAccount();
 }
