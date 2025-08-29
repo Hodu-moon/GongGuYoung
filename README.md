@@ -4,6 +4,24 @@
 
 > 대학생들을 위한 공동구매 플랫폼과 BNPL(Buy Now, Pay Later) 서비스를 결합한 혁신적인 캠퍼스 금융 솔루션
 
+## ⚡ 빠른 시작
+
+Docker Compose를 사용하여 전체 서비스를 한 번에 실행할 수 있습니다.
+
+```bash
+# 저장소 클론
+git clone https://github.com/2025SinhanHackaton/GongGuYoung.git
+cd GongGuYoung
+
+# 전체 서비스 실행
+docker-compose up --build -d
+
+# 접속 확인
+# Frontend: http://localhost
+# Backend API: http://localhost:8080
+# Swagger UI: http://localhost:8080/swagger-ui/index.html
+```
+
 ## 📋 프로젝트 개요
 
 GongGuYoung은 캠퍼스 내 학생들이 함께 상품을 구매하고, 유연한 결제 옵션을 제공받을 수 있는 통합 금융 플랫폼입니다. 
