@@ -10,25 +10,15 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Link } from "react-router-dom";
 import Image from "@/compat/NextImage";
 import {
-  Plus,
-  Users,
-  ShoppingCart,
-  TrendingUp,
-  User,
-  Clock,
-  Star,
-  Trophy,
-  Eye,
+  Plus, Users, ShoppingCart, TrendingUp, User, Clock, Star, Trophy, Eye,
 } from "lucide-react";
 import { GroupPurchaseApi, type UICampaign } from "@/lib/group-purchase-api";
 
 /* ===================== 초성 매칭 유틸 (경량) ===================== */
-const CHO = [
-  "ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"
-];
+const CHO = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
 function getInitial(ch: string) {
   const code = ch.charCodeAt(0);
-  if (code < 0xac00 || code > 0xd7a3) return ch; // 한글 아닌 경우 원문 유지
+  if (code < 0xac00 || code > 0xd7a3) return ch;
   const offset = code - 0xac00;
   const choIdx = Math.floor(offset / 588);
   return CHO[choIdx];
@@ -37,12 +27,12 @@ function toInitials(str: string) {
   return Array.from(str).map(getInitial).join("");
 }
 
-/* ===================== 레거시 카드 타입 ===================== */
+/* ===================== 카드 타입 ===================== */
 type LegacyCardModel = {
   id: string;
   title: string;
   description: string;
-  status: "WAITING" | "COMPLETE" | "CANCELLED";
+  status: "active" | "completed" | "cancelled"; // 실제로 쓰는 상태 값으로 정리
   createdAt?: string;
   participants: number;
   discountPrice: number;
@@ -72,8 +62,11 @@ function RankEmblem({ rank }: { rank: number }) {
 }
 
 function toLegacyCardModel(c: UICampaign): LegacyCardModel {
+  // UICampaign.status: WAITING|COMPLETE|CANCELLED -> 화면 상태로 매핑
   const legacyStatus: LegacyCardModel["status"] =
-    c.status === "CANCELLED" ? "cancelled" : c.status === "COMPLETE" ? "completed" : "active";
+    c.status === "CANCELLED" ? "cancelled"
+    : c.status === "COMPLETE"  ? "completed"
+    : "active"; // WAITING -> active
   return {
     id: c.id,
     title: c.title,
@@ -102,7 +95,7 @@ export default function DashboardPage() {
     status: "all" as "all" | "active" | "completed",
   });
 
-  const deferredSearch = useDeferredValue(filters.search); // 입력 지연
+  const deferredSearch = useDeferredValue(filters.search);
   const [loading, setLoading] = useState(true);
   const [list, setList] = useState<UICampaign[]>([]);
 
@@ -116,15 +109,13 @@ export default function DashboardPage() {
         setLoading(false);
       }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   /* ===================== 1) 레거시 모델 ===================== */
   const legacy = useMemo(() => list.map(toLegacyCardModel), [list]);
 
-  /* ===================== 2) 검색 인덱스(소문자/초성/파생 상태 캐시) ===================== */
+  /* ===================== 2) 검색 인덱스 ===================== */
   type IndexRow = {
     c: LegacyCardModel;
     titleL: string;
@@ -139,7 +130,7 @@ export default function DashboardPage() {
     const now = Date.now();
     return legacy.map((c) => {
       const endTs = new Date(c.endDate).getTime();
-      const derived =
+      const derived: IndexRow["derivedStatus"] =
         endTs <= now ? "completed" : c.status === "cancelled" ? "cancelled" : "active";
       const titleL = c.title.toLowerCase();
       const prodL = c.product.name.toLowerCase();
@@ -155,34 +146,41 @@ export default function DashboardPage() {
     });
   }, [legacy]);
 
-  /* ===================== 3) 필터링 ===================== */
+  /* ===================== 3) 필터 + 상태 우선 정렬 ===================== */
   const filteredCampaigns = useMemo(() => {
     const qRaw = (deferredSearch || "").trim().toLowerCase();
-    if (!qRaw && filters.status === "all") {
-      // 쿼리/상태필터 모두 기본이면 빠른 경로: 전체 반환
-      return index.map((r) => r.c);
-    }
-
     const qI = qRaw ? toInitials(qRaw) : "";
     const wantStatus = filters.status;
 
-    return index
-      .filter((row) => {
-        // 상태 필터
-        if (wantStatus !== "all" && row.derivedStatus !== wantStatus) return false;
+    // WAITING(=active) > completed > cancelled 우선순위
+    const STATUS_PRIORITY: Record<IndexRow["derivedStatus"], number> = {
+      active: 0,
+      completed: 1,
+      cancelled: 2,
+    };
 
-        // 검색어 없음
-        if (!qRaw) return true;
+    const rows = index.filter((row) => {
+      if (wantStatus !== "all" && row.derivedStatus !== wantStatus) return false;
+      if (!qRaw) return true;
+      return (
+        row.titleL.includes(qRaw) ||
+        row.prodL.includes(qRaw) ||
+        (qI.length > 0 && (row.titleI.includes(qI) || row.prodI.includes(qI)))
+      );
+    });
 
-        // 텍스트/초성 모두 매칭
-        const textHit =
-          row.titleL.includes(qRaw) ||
-          row.prodL.includes(qRaw) ||
-          (qI.length > 0 && (row.titleI.includes(qI) || row.prodI.includes(qI)));
+    // ✅ 상태 우선 정렬 + 서브 정렬(참여자수↓, 생성일↓)
+    rows.sort((a, b) => {
+      const byStatus = STATUS_PRIORITY[a.derivedStatus] - STATUS_PRIORITY[b.derivedStatus];
+      if (byStatus !== 0) return byStatus;
+      const byParticipants = b.c.participants - a.c.participants;
+      if (byParticipants !== 0) return byParticipants;
+      const aCreated = new Date(a.c.createdAt || 0).getTime();
+      const bCreated = new Date(b.c.createdAt || 0).getTime();
+      return bCreated - aCreated;
+    });
 
-        return textHit;
-      })
-      .map((row) => row.c);
+    return rows.map((r) => r.c);
   }, [index, deferredSearch, filters.status]);
 
   /* ===================== 4) 파생 통계 ===================== */
@@ -203,7 +201,6 @@ export default function DashboardPage() {
     return 0;
   }
 
-  // 인기/최신 (인덱스의 파생 상태를 활용해도 되지만, UI 단순화를 위해 그대로 유지)
   const trendingCampaigns = useMemo(
     () =>
       legacy

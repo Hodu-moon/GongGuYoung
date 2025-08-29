@@ -213,8 +213,8 @@ export default function PaymentSuccessPage() {
             </div>
 
             {/* Order Details Card */}
-            <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm mb-6">
-              <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+            <Card className="py-0 border-0 content-center shadow-2xl bg-white/95 backdrop-blur-sm mb-6  rounded-t-2xl">
+              <CardHeader className="h-[75px] content-center bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-2xl">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <Package className="w-6 h-6" />
                   주문 상세 정보
@@ -384,7 +384,7 @@ export default function PaymentSuccessPage() {
                   다른 공구 둘러보기
                 </Button>
               </Link>
-              <Link to="/bnpl">
+              <Link to="/my-page">
                 <Button
                   variant="outline"
                   className="w-full flex items-center justify-center gap-2 bg-white/95 backdrop-blur-sm border-white/20 font-bold hover:bg-white shadow-lg"
