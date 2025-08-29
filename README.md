@@ -24,7 +24,7 @@ docker-compose up --build -d
 
 ## 📋 프로젝트 개요
 
-GongGuYoung은 캠퍼스 내 학생들이 함께 상품을 구매하고, 유연한 결제 옵션을 제공받을 수 있는 통합 금융 플랫폼입니다. 
+GongGuYoung은 캠퍼스 내 학생들이 함께 상품을 구매하고, 유연한 결제 옵션을 제공받을 수 있는 통합 금융 플랫폼입니다.
 공동구매를 통한 비용 절약과 BNPL을 통한 결제 부담 완화로 학생들의 경제적 부담을 줄이고 캠퍼스 생활을 더욱 풍요롭게 만듭니다.
 
 ### 접속 URL
@@ -35,11 +35,12 @@ GongGuYoung은 캠퍼스 내 학생들이 함께 상품을 구매하고, 유연�
 
 - **공동구매 시스템**: 학생들이 함께 참여하여 더 저렴한 가격으로 상품을 구매
 - **BNPL 결제**: 지금 구매하고 나중에 결제하는 유연한 결제 시스템
-- **회원 관리**: 안전한 학생 인증 및 계정 관리
+- **대안신용평가 AI**: 대학생의 학사 데이터를 이용해 신용도를 산출하고, 위험도 기반으로 BNPL 개인 한도를 실시간 산정
 
 ## 🛠️ 기술 스택
 
 ### Backend
+
 - **Framework**: Spring Boot 3.5.4
 - **Language**: Java 17
 - **Database**: MySQL 8.0, Redis 6.2
@@ -48,6 +49,7 @@ GongGuYoung은 캠퍼스 내 학생들이 함께 상품을 구매하고, 유연�
 - **External API**: SSAFY 금융 Open API
 
 ### Frontend
+
 - **Framework**: React 19
 - **Language**: TypeScript
 - **Build Tool**: Vite
@@ -57,6 +59,7 @@ GongGuYoung은 캠퍼스 내 학생들이 함께 상품을 구매하고, 유연�
 - **Routing**: React Router Dom 6
 
 ### DevOps & Infrastructure
+
 - **Containerization**: Docker & Docker Compose
 - **Web Server**: Nginx
 - **Development**: AWS EC2, Github Actions
@@ -66,32 +69,21 @@ GongGuYoung은 캠퍼스 내 학생들이 함께 상품을 구매하고, 유연�
 ### 필수 요구사항
 
 #### 시스템 요구사항
+
 - **Java**: 17 이상
 - **Node.js**: 18 이상
 - **Docker**: 20.10 이상
 - **Docker Compose**: 2.0 이상
 
-#### 개발 도구 권장사항
-- **IDE**: IntelliJ IDEA (Backend), VSCode (Frontend)
-- **Git**: 2.30 이상
-
 ### 환경변수 설정
 
 #### Backend 환경변수 (application.yml)
+
 ```yaml
 spring:
   profiles:
-    active: local # local, docker
-
-  datasource:
-    url: jdbc:mysql://localhost:3306/gonggu_db
-    username: gonggu
-    password: gonggu
-
-  data:
-    redis:
-      host: localhost
-      port: 6379
+    active: local 
+    # application-docker.yml, application-local.yml 에서 연결사항을 확인
 
 fin-open:
   member-id: your-member-id
@@ -101,6 +93,7 @@ fin-open:
 ```
 
 #### Frontend 환경변수 (.env)
+
 ```bash
 VITE_GEMINI_API_KEY=your-gemini-api-key
 ```
@@ -123,6 +116,7 @@ docker-compose down
 ```
 
 **접속 정보:**
+
 - **Frontend**: http://localhost
 - **Backend API**: http://localhost:8080
 - **Swagger UI**: http://localhost:8080/swagger-ui/index.html
@@ -132,6 +126,7 @@ docker-compose down
 ### 개별 서비스 실행
 
 #### Backend 실행
+
 ```bash
 cd backend
 
@@ -144,6 +139,7 @@ java -jar build/libs/backend-0.0.1-SNAPSHOT.jar
 ```
 
 #### Frontend 실행
+
 ```bash
 cd frontend
 
@@ -160,11 +156,13 @@ npm run preview
 개발 시 코드 변경사항을 실시간으로 반영하려면:
 
 1. **데이터베이스 서비스만 실행**
+
    ```bash
    docker-compose up -d mysql redis
    ```
 
 2. **Backend 개발 모드 실행**
+
    ```bash
    cd backend
    ./gradlew bootRun --continuous
@@ -179,37 +177,46 @@ npm run preview
 ## 📚 API 문서
 
 ### Swagger UI
+
 Backend 서버 실행 후 다음 URL에서 API 문서를 확인할 수 있습니다:
+
 - **개발환경**: http://localhost:8080/swagger-ui/index.html
 - **Docker 환경**: http://localhost:8080/swagger-ui/index.html
 
 ### 주요 API 엔드포인트
 
 #### 🔐 인증 관련
+
 - `POST /api/auth/login` - 로그인
 - `POST /api/auth/signup` - 회원가입
 
 #### 👥 회원 관리
-- `GET /api/members/profile` - 회원 정보 조회
-- `POST /api/members/deposit` - 계좌 입금
+
+- `POST /api/v1/members/deposit` - 계좌 입금
+- `PUT /api/v1/members/{id}/bnpl-limit-update` - BNPL 한도 업데이트
 
 #### 🛍️ 공동구매
-- `GET /api/group-purchases` - 공동구매 목록 조회
-- `POST /api/group-purchases` - 공동구매 생성
-- `POST /api/group-purchases/{id}/participate` - 공동구매 참여
+
+- `GET /api/v1/group-purchase` - 공동구매 목록 조회
+- `POST /api/v1/group-purchase` - 공동구매 생성
+- `POST /api/v1/group-purchase/members/{membersId}` 
 
 #### 💳 결제
-- `POST /api/payments` - 일반 결제
-- `POST /api/payments/bnpl` - BNPL 결제
-- `PUT /api/payments/bnpl/limit` - BNPL 한도 업데이트
+
+- `POST /api/v1/payments` - 공동구매 참여 및 결제
+- `POST /api/v1/payments/bnpl` - BNPL 상환
+- `GET /api/v1/payments/bnpl` - BNPL 잔액 조회
+- `POST /api/v1/payments/refund` - 공동구매 결제 취소
 
 #### 📦 상품
-- `GET /api/products` - 상품 목록 조회
-- `GET /api/products/{id}` - 상품 상세 조회
+
+- `GET /api/v1/products` - 상품 목록 조회
+- `GET /api/v1/products/{id}` - 상품 상세 조회
 
 ## 🏗️ 프로젝트 구조
 
 ### Backend 구조
+
 ```
 backend/src/main/java/xyz/jinjin99/gongguyoung/backend/
 ├── client/              # 외부 API 클라이언트
@@ -227,6 +234,7 @@ backend/src/main/java/xyz/jinjin99/gongguyoung/backend/
 ```
 
 ### Frontend 구조
+
 ```
 frontend/src/
 ├── api/                # API 호출 함수
@@ -245,6 +253,7 @@ frontend/src/
 ### Docker를 이용한 배포
 
 #### 1. 전체 서비스 배포
+
 ```bash
 # 프로덕션 빌드 및 실행
 docker-compose up -d --build
@@ -257,6 +266,7 @@ docker-compose logs -f [service-name]
 ```
 
 #### 2. 개별 서비스 배포
+
 ```bash
 # Backend만 재배포
 docker-compose up -d --build springboot
@@ -268,6 +278,7 @@ docker-compose up -d --build nginx
 ### 환경별 설정 관리
 
 #### application.yml 프로필 구성
+
 - `application-local.yml`: 로컬 개발환경
 - `application-docker.yml`: Docker 환경 및 배포환경
 - `application.yml`: 공통 설정
