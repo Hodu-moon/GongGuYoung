@@ -314,6 +314,13 @@ public class ProductDataLoader implements CommandLineRunner {
                 .build(),
 
             Product.builder()
+                .name("블루투스 스피커 JBL")
+                .price(90000L)
+                .imageUrl("/api/v1/images/40")
+                .description("기숙사 파티용 휴대용 스피커")
+                .build(),
+
+            Product.builder()
                 .name("카시오 공학용계산기, FX-991ES PLUS-2")
                 .price(90000L)
                 .imageUrl("/api/v1/images/41")
