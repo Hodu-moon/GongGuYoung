@@ -108,6 +108,7 @@ export default function MyPage() {
         
         setBnplRemain(remain)
         setBnplItems(items || [])
+        console.log("BNPL items data:", items)
         
         if (balanceResponse.ok) {
           const balanceData = await balanceResponse.json()
@@ -132,28 +133,67 @@ export default function MyPage() {
     ? mockCampaigns.filter((campaign) => campaign.createdBy !== user.fullName).slice(0, 3)
     : []
 
-  // 실제 참여한 공구 데이터를 주문 내역으로 변환
+  // BNPL과 그룹 구매 데이터를 매칭하여 주문 내역 생성
   const getOrderHistory = () => {
-    return memberGroupPurchases.map((purchase) => ({
-      id: purchase.id?.toString() || 'unknown',
-      campaignTitle: purchase.title || '제목 없음',
-      productName: purchase.productName || '상품명 없음',
-      quantity: 1, // 일반적으로 공구는 1개씩 참여
-      amount: calculateDiscountedPrice(purchase),
-      status: (() => {
-        const now = Date.now()
-        const endTime = new Date(purchase.endAt).getTime()
-        if (endTime <= now || purchase.status?.toLowerCase() === "completed") {
-          return "completed"
-        } else {
-          return "processing"
-        }
-      })(),
-      orderDate: new Date(purchase.joinedAt).toLocaleDateString('ko-KR'),
-      paymentMethod: purchase.isPaid ? "BNPL" : "미결제",
-      originalPrice: purchase.productPrice || 0,
-      discountedPrice: calculateDiscountedPrice(purchase)
-    }))
+    console.log("getOrderHistory - bnplItems:", bnplItems)
+    console.log("getOrderHistory - memberGroupPurchases:", memberGroupPurchases)
+    
+    return bnplItems.map((payment) => {
+      // BNPL 아이템과 매칭되는 그룹 구매 찾기 (제목으로 매칭)
+      const matchedGroupPurchase = memberGroupPurchases.find(gp => 
+        gp.title === payment.groupPurchaseTitle || 
+        gp.productName === payment.itemName
+      )
+      
+      // 매칭된 그룹 구매에서 원가 가져오기
+      const originalPrice = matchedGroupPurchase?.productPrice || payment.bnplAmount
+      const discountedPrice = matchedGroupPurchase ? calculateDiscountedPrice(matchedGroupPurchase) : payment.bnplAmount
+      
+      // 예상 도착일 계산 (공동구매 종료일 + 1일)
+      const estimatedDeliveryDate = matchedGroupPurchase ? (() => {
+        const endDate = new Date(matchedGroupPurchase.endAt)
+        const deliveryDate = new Date(endDate)
+        deliveryDate.setDate(deliveryDate.getDate() + 1) // 종료일 + 1일
+        return deliveryDate.toLocaleDateString('ko-KR')
+      })() : '미정'
+      
+      // 결제 방식 결정 (BNPL 금액이 있으면 BNPL, 없으면 일시불)
+      const paymentMethod = payment.bnplAmount > 0 ? "BNPL" : "일시불"
+      
+      return {
+        id: payment.paymentId.toString(),
+        campaignTitle: payment.groupPurchaseTitle,
+        productName: payment.itemName,
+        quantity: 1,
+        amount: discountedPrice, // 할인가 표시 (실제 결제한 금액)
+        status: payment.bnplstatus === "COMPLETED" ? "completed" : "processing",
+        orderDate: new Date().toLocaleDateString('ko-KR'),
+        originalPrice: originalPrice,
+        discountedPrice: discountedPrice,
+        groupPurchaseId: matchedGroupPurchase?.id, // 상품 페이지로 이동하기 위한 ID
+        estimatedDeliveryDate: estimatedDeliveryDate, // 예상 도착일
+        productImageUrl: matchedGroupPurchase?.productImageUrl || payment.itemImageUrl || "/placeholder.svg", // 상품 이미지
+        paymentMethod: paymentMethod // 결제 방식
+      }
+    })
+  }
+
+  // 주문 내역 기반 통계 계산
+  const getOrderStats = () => {
+    const orders = getOrderHistory()
+    
+    const totalOrders = orders.length
+    const completedOrders = orders.filter(order => order.status === 'completed').length
+    const totalSavings = orders.reduce((sum, order) => {
+      const savings = order.originalPrice - order.discountedPrice
+      return sum + savings
+    }, 0)
+    
+    return {
+      totalOrders,
+      completedOrders,
+      totalSavings
+    }
   }
 
   // mockBNPLStatus 제거 - bnplItems로 실제 데이터 사용
@@ -235,10 +275,13 @@ export default function MyPage() {
     }
   }
 
-  // 총 상환 금액 계산 (BNPL 사용 중인 금액과 동일)
+  // 총 상환 금액 계산 (실제 상환해야 할 BNPL 항목들의 합계)
   const getTotalRepayAmount = () => {
-    return bnplCreditInfo.usedAmount
+    return bnplItems
+      .filter(item => item.bnplstatus === "PROCESSING" && item.bnplAmount > 0)
+      .reduce((sum, item) => sum + item.bnplAmount, 0)
   }
+
 
   // 입금 처리 함수
   const handleDeposit = async () => {
@@ -374,33 +417,22 @@ export default function MyPage() {
                   <div className="grid grid-cols-2 gap-4 text-center">
                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-3 rounded-lg">
                       <div className="text-lg font-bold text-purple-600">
-                        {isLoadingPurchases ? '-' : memberGroupPurchases.length}
+                        {(isLoadingBnpl || isLoadingPurchases) ? '-' : getOrderStats().totalOrders}
                       </div>
                       <div className="text-xs text-purple-700">참여한 공구</div>
                     </div>
                     <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-3 rounded-lg">
                       <div className="text-lg font-bold text-pink-600">
-                        {isLoadingPurchases ? '-' : memberGroupPurchases.filter(p => {
-                          const now = Date.now()
-                          const endTime = new Date(p.endAt).getTime()
-                          return endTime <= now || p.status?.toLowerCase() === "completed"
-                        }).length}
+                        {(isLoadingBnpl || isLoadingPurchases) ? '-' : getOrderStats().completedOrders}
                       </div>
                       <div className="text-xs text-pink-700">완료된 공구</div>
                     </div>
                   </div>
                   <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg text-center">
                     <div className="text-2xl font-bold text-purple-700">
-                      {isLoadingPurchases 
+                      {(isLoadingBnpl || isLoadingPurchases) 
                         ? '-' 
-                        : memberGroupPurchases
-                            .reduce((sum, p) => {
-                              const originalPrice = p.productPrice || 0
-                              const discountedPrice = calculateDiscountedPrice(p)
-                              const savings = originalPrice - discountedPrice
-                              return sum + savings
-                            }, 0)
-                            .toLocaleString()
+                        : getOrderStats().totalSavings.toLocaleString()
                       }원
                     </div>
                     <div className="text-sm text-purple-600">총 절약 금액</div>
@@ -459,12 +491,12 @@ export default function MyPage() {
                     프로필
                   </TabsTrigger>
                   <TabsTrigger value="campaigns" className="flex items-center gap-2">
-                    <ShoppingBag className="w-4 h-4" />
-                    공구 내역
+                    <CreditCard className="w-4 h-4" />
+                    BNPL 상환
                   </TabsTrigger>
                   <TabsTrigger value="payments" className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4" />
-                    결제 내역
+                    <ShoppingBag className="w-4 h-4" />
+                    주문 내역
                   </TabsTrigger>
                   <TabsTrigger value="settings" className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4" />
@@ -610,201 +642,8 @@ export default function MyPage() {
                   </Card>
                 </TabsContent>
 
-                {/* Campaigns Tab */}
+                {/* BNPL Repayment Tab */}
                 <TabsContent value="campaigns" className="space-y-6">
-                  {/* Member's Group Purchases */}
-                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <ShoppingBag className="w-5 h-5" />
-                        참여한 공구 ({isLoadingPurchases ? '-' : memberGroupPurchases.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {isLoadingPurchases ? (
-                        <div className="text-center py-8 text-purple-600">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-                          <p>로딩 중...</p>
-                        </div>
-                      ) : memberGroupPurchases.length > 0 ? (
-                        <div className="space-y-4">
-                          {memberGroupPurchases.map((purchase, index) => (
-                            <div
-                              key={purchase?.id || `purchase-${index}`}
-                              className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg hover:shadow-md transition-all duration-200"
-                            >
-                              <div className="flex items-center gap-4">
-                                <img
-                                  src={purchase?.productImageUrl || "/placeholder.svg"}
-                                  alt={purchase?.productName || "상품 이미지"}
-                                  className="w-16 h-16 object-cover rounded-lg"
-                                />
-                                <div>
-                                  <h3 className="font-semibold text-purple-800">{purchase?.title || "제목 없음"}</h3>
-                                  <p className="text-sm text-purple-600">{purchase?.productName || "상품명 없음"}</p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    {getStatusBadge(purchase)}
-                                    <span className="text-sm text-purple-600">
-                                      결제완료
-                                    </span>
-                                    <span className="text-sm text-purple-600">
-                                      {purchase?.currentCount || 0}/{purchase?.targetCount || 0}명 참여
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="space-y-1">
-                                  <div className="text-sm text-gray-500 line-through">
-                                    정가: {(purchase.productPrice || 0).toLocaleString()}원
-                                  </div>
-                                  <div className="text-lg font-bold text-green-600">
-                                    할인가: {calculateDiscountedPrice(purchase).toLocaleString()}원
-                                  </div>
-                                </div>
-                                <div className="flex gap-2 mt-2">
-                                  <Link to={`/campaigns/${purchase?.id || '#'}`}>
-                                    <Button variant="outline" size="sm" className="bg-transparent">
-                                      상세보기
-                                    </Button>
-                                  </Link>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-purple-600">
-                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-purple-400" />
-                          <p>아직 참여한 공구가 없습니다.</p>
-                          <Link to="/dashboard">
-                            <Button className="mt-4 bg-hey-gradient">공구 둘러보기</Button>
-                          </Link>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Payments Tab */}
-                <TabsContent value="payments" className="space-y-6">
-                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <CreditCard className="w-5 h-5" />
-                        BNPL 한도 현황
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {isLoadingBnpl ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-                          <p className="text-purple-600">BNPL 정보를 불러오는 중...</p>
-                        </div>
-                      ) : bnplCreditInfo.hasNoLimit ? (
-                        <div className="text-center py-8">
-                          <div className="text-2xl font-bold text-orange-600 mb-2">
-                            BNPL 한도가 없습니다
-                          </div>
-                          <div className="text-sm text-orange-700 mb-4">
-                            AI 신용평가를 통해 BNPL 한도를 받아보세요
-                          </div>
-                          <div className="text-lg font-semibold text-gray-600">
-                            최소 10만원 ~ 최대 50만원
-                          </div>
-                          <Link to="/bnpl">
-                            <Button className="mt-4 bg-orange-600 hover:bg-orange-700">
-                              AI 한도 평가하기
-                            </Button>
-                          </Link>
-                        </div>
-                      ) : (
-                        <div className="grid md:grid-cols-3 gap-4">
-                          <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600">
-                              {bnplCreditInfo.totalLimit.toLocaleString()}원
-                            </div>
-                            <div className="text-sm text-blue-700">총 BNPL 한도</div>
-                          </div>
-                          <div className="text-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-lg">
-                            <div className="text-2xl font-bold text-red-600">
-                              {bnplCreditInfo.usedAmount.toLocaleString()}원
-                            </div>
-                            <div className="text-sm text-red-700">상환해야 할 금액</div>
-                          </div>
-                          <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">
-                              {bnplCreditInfo.availableAmount.toLocaleString()}원
-                            </div>
-                            <div className="text-sm text-green-700">사용 가능한 잔여 금액</div>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Order History */}
-                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <CreditCard className="w-5 h-5" />
-                        주문 내역
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {isLoadingPurchases ? (
-                        <div className="text-center py-8 text-purple-600">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-                          <p>주문 내역을 불러오는 중...</p>
-                        </div>
-                      ) : getOrderHistory().length > 0 ? (
-                        <div className="space-y-4">
-                          {getOrderHistory().map((order) => (
-                            <div
-                              key={order.id}
-                              className="flex items-center justify-between p-4 bg-purple-50/50 rounded-lg hover:bg-purple-100/50 transition-colors"
-                            >
-                              <div>
-                                <h3 className="font-semibold text-purple-800">{order.campaignTitle}</h3>
-                                <p className="text-sm text-purple-600">{order.productName}</p>
-                                <div className="flex items-center gap-4 mt-2 text-sm text-purple-600">
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="w-4 h-4" />
-                                    {order.orderDate}
-                                  </span>
-                                  <span>수량: {order.quantity}개</span>
-                                  <span>{order.paymentMethod}</span>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="space-y-1">
-                                  {order.originalPrice !== order.discountedPrice && (
-                                    <div className="text-sm text-gray-500 line-through">
-                                      정가: {order.originalPrice.toLocaleString()}원
-                                    </div>
-                                  )}
-                                  <div className="text-lg font-bold text-purple-700">
-                                    {order.amount.toLocaleString()}원
-                                  </div>
-                                </div>
-                                <div className="mt-2">
-                                  <Badge className={order.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}>
-                                    {order.status === 'completed' ? '완료' : '진행중'}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-purple-600">
-                          <CreditCard className="w-12 h-12 mx-auto mb-4 text-purple-400" />
-                          <p>주문 내역이 없습니다.</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
                   {/* Current Balance Card */}
                   <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
                     <CardHeader>
@@ -925,9 +764,15 @@ export default function MyPage() {
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
                             <p className="text-purple-600">BNPL 결제 현황을 불러오는 중...</p>
                           </div>
-                        ) : bnplItems.length > 0 ? (
+                        ) : bnplItems.filter(bnpl => 
+                            bnpl.bnplstatus === "COMPLETED" || 
+                            (bnpl.bnplstatus === "PROCESSING" && bnpl.bnplAmount > 0)
+                          ).length > 0 ? (
                           <div className="space-y-4">
-                            {bnplItems.map((bnpl) => (
+                            {bnplItems.filter(bnpl => 
+                              bnpl.bnplstatus === "COMPLETED" || 
+                              (bnpl.bnplstatus === "PROCESSING" && bnpl.bnplAmount > 0)
+                            ).map((bnpl) => (
                               <div
                                 key={bnpl.paymentId}
                                 className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200"
@@ -953,7 +798,7 @@ export default function MyPage() {
                                     )}
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mb-4">
                                   <div>
                                     <span className="text-purple-500">상환해야 할 금액</span>
                                     <div className="font-semibold">{bnpl.bnplAmount.toLocaleString()}원</div>
@@ -969,6 +814,16 @@ export default function MyPage() {
                                     <div className="font-semibold">#{bnpl.paymentId}</div>
                                   </div>
                                 </div>
+                                
+                                {/* 상환 완료 상태 표시 */}
+                                {bnpl.bnplstatus === "COMPLETED" && (
+                                  <div className="flex justify-center pt-3 border-t border-purple-200">
+                                    <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg">
+                                      <span className="text-emerald-500 text-lg">✓</span>
+                                      <span className="font-medium">상환이 완료되었습니다</span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -980,6 +835,134 @@ export default function MyPage() {
                         )}
                       </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* Order History Tab */}
+                <TabsContent value="payments" className="space-y-6">
+                  <Card className="border-0 shadow-lg bg-white/95 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <ShoppingBag className="w-5 h-5" />
+                        주문 내역
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {(isLoadingBnpl || isLoadingPurchases) ? (
+                        <div className="text-center py-8 text-purple-600">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                          <p>주문 내역을 불러오는 중...</p>
+                        </div>
+                      ) : getOrderHistory().length > 0 ? (
+                        <div className="space-y-6">
+                          {getOrderHistory().map((order) => (
+                            <div
+                              key={order.id}
+                              className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border border-purple-100 overflow-hidden"
+                            >
+                              <div className="p-6">
+                                <div className="flex items-start gap-6">
+                                  {/* 상품 이미지 */}
+                                  <div className="flex-shrink-0">
+                                    <img
+                                      src={order.productImageUrl}
+                                      alt={order.productName}
+                                      className="w-20 h-20 object-cover rounded-lg shadow-sm border border-gray-200"
+                                    />
+                                  </div>
+                                  
+                                  {/* 주문 정보 */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between mb-3">
+                                      <div>
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                                          {order.campaignTitle}
+                                        </h3>
+                                        <p className="text-sm text-gray-600 mb-2">{order.productName}</p>
+                                        <div className="flex items-center gap-1 mb-2">
+                                          <Badge className={order.status === 'completed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-blue-100 text-blue-700 border-blue-200'}>
+                                            {order.status === 'completed' ? '✓ 완료' : '🚀 진행중'}
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* 가격 정보 */}
+                                      <div className="text-right">
+                                        {order.originalPrice !== order.discountedPrice && (
+                                          <div className="text-sm text-gray-400 line-through mb-1">
+                                            ₩{order.originalPrice.toLocaleString()}
+                                          </div>
+                                        )}
+                                        <div className="text-xl font-bold text-purple-600">
+                                          ₩{order.amount.toLocaleString()}
+                                        </div>
+                                        {order.originalPrice !== order.discountedPrice && (
+                                          <div className="text-xs text-emerald-600 font-medium">
+                                            {Math.round(((order.originalPrice - order.discountedPrice) / order.originalPrice) * 100)}% 할인
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    
+                                    {/* 주문 상세 정보 */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-3 px-4 bg-gray-50 rounded-lg mb-4">
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <Calendar className="w-4 h-4 text-purple-500" />
+                                        <div>
+                                          <div className="text-xs text-gray-500">주문일</div>
+                                          <div className="font-medium text-gray-700">{order.orderDate}</div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <Clock className="w-4 h-4 text-orange-500" />
+                                        <div>
+                                          <div className="text-xs text-gray-500">예상 도착일</div>
+                                          <div className="font-medium text-gray-700">{order.estimatedDeliveryDate}</div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <ShoppingBag className="w-4 h-4 text-green-500" />
+                                        <div>
+                                          <div className="text-xs text-gray-500">수량</div>
+                                          <div className="font-medium text-gray-700">{order.quantity}개</div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <CreditCard className="w-4 h-4 text-blue-500" />
+                                        <div>
+                                          <div className="text-xs text-gray-500">결제방식</div>
+                                          <div className="font-medium text-gray-700">{order.paymentMethod}</div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* 액션 버튼 */}
+                                    {order.groupPurchaseId && (
+                                      <div className="flex justify-end">
+                                        <Link to={`/campaigns/${order.groupPurchaseId}`}>
+                                          <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-pink-100 hover:border-purple-300 transition-all duration-200"
+                                          >
+                                            📱 상세보기
+                                          </Button>
+                                        </Link>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-purple-600">
+                          <CreditCard className="w-12 h-12 mx-auto mb-4 text-purple-400" />
+                          <p>주문 내역이 없습니다.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </TabsContent>
 
                 {/* Settings Tab */}

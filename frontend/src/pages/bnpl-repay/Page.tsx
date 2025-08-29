@@ -65,8 +65,8 @@ export default function BnplRepayPage() {
     loadData()
   }, [user?.id])
 
-  // 상환 대상 아이템들 (PROCESSING 상태인 것들만)
-  const processingItems = bnplItems.filter(item => item.bnplstatus === "PROCESSING")
+  // 상환 대상 아이템들 (PROCESSING 상태이면서 금액이 0원보다 큰 것들만)
+  const processingItems = bnplItems.filter(item => item.bnplstatus === "PROCESSING" && item.bnplAmount > 0)
   
   // 총 상환 금액 (BNPL 사용 중인 금액과 동일)
   const totalRepayAmount = bnplRemain ? (bnplRemain.bnplLimit - bnplRemain.remain) : 0
