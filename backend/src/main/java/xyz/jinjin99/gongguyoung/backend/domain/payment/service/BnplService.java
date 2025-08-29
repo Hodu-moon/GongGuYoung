@@ -175,6 +175,7 @@ public class BnplService {
 
     }
 
+
     private List<ProcessingBnplResponse> listProcessBnplPaymentsV1(Long memberId){
 
         List<PaymentEvent> paymentEvents = paymentRepository.findByMemberId(memberId);
@@ -184,11 +185,11 @@ public class BnplService {
 
         for( PaymentEvent event : paymentEvents){
 
-            if(Objects.isNull(event.getBnplStatus())){
-                continue;
-            }
-
-            if(event.getBnplStatus() == BnplStatus.PROCESSING){
+//            if(Objects.isNull(event.getBnplStatus())){
+//                continue;
+//            }
+//
+//            if(event.getBnplStatus() == BnplStatus.PROCESSING){
 
                 Product product = event.getGroupPurchase().getProduct();
 
@@ -206,7 +207,7 @@ public class BnplService {
 
 
                 lists.add(response);
-            }
+//            }
         }
 
 
