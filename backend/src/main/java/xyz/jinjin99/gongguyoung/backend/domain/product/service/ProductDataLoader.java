@@ -314,10 +314,24 @@ public class ProductDataLoader implements CommandLineRunner {
                 .build(),
 
             Product.builder()
-                .name("블루투스 스피커 JBL")
+                .name("카시오 공학용계산기, FX-991ES PLUS-2")
                 .price(90000L)
-                .imageUrl("/api/v1/images/40")
-                .description("기숙사 파티용 휴대용 스피커")
+                .imageUrl("/api/v1/images/41")
+                .description("새로운 방정식 모드와 400개 이상의 함수가 내장된 최신 공학용 계산기")
+                .build(),
+
+            Product.builder()
+                .name("실험복")
+                .price(90000L)
+                .imageUrl("/api/v1/images/42")
+                .description("화학, 생물, 의학 등 다양한 실험실에서 사용되는 실험복")
+                .build(),
+
+            Product.builder()
+                .name("거시경제학")
+                .price(90000L)
+                .imageUrl("/api/v1/images/43")
+                .description("『거시경제학』은 중급 거시경제학 교재이다. 강의 교재로 사용할 경우 각 장의 본문을 중심으로 삼고 연습문제를 활용할 수 있다. 국가고시를 비롯한 시험에 대비할 목적으로 사용한다면 본문과 부록을 모두 살펴보아야 하며, 각 장마다 분석형 문제를 풀어보는 것이 유익할 것이다.")
                 .build()
         );
 

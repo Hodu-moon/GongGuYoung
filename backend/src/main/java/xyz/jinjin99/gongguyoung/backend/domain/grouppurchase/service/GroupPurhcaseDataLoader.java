@@ -146,6 +146,42 @@ public class GroupPurhcaseDataLoader implements CommandLineRunner{
       .discountedPrice((long) (90000 * 0.87))
       .accountNo(accountService.createGroupPurchaseAccount())
       .status(GroupPurchaseStatus.COMPLETE)
+      .build(),
+      
+      GroupPurchase.builder()
+      .product(productRepository.findById(41L).get())
+      .title("카시오 공학용계산기 공구")
+      .context("공대생 필수템! FX-991ES PLUS-2 최신 공학용계산기 공구해요. 400개 이상 함수 내장!")
+      .targetCount(15)
+      .currentCount(7)
+      .endAt(LocalDateTime.now().plusDays(8))
+      .discountedPrice((long) (90000 * 0.83))
+      .accountNo(accountService.createGroupPurchaseAccount())
+      .status(GroupPurchaseStatus.WAITING)
+      .build(),
+      
+      GroupPurchase.builder()
+      .product(productRepository.findById(42L).get())
+      .title("실험복 이공계생 필수")
+      .context("화학, 생물, 의학과 학생들! 실험실용 실험복 공구합니다. 안전하고 실용적!")
+      .targetCount(10)
+      .currentCount(4)
+      .endAt(LocalDateTime.now().plusDays(5))
+      .discountedPrice((long) (90000 * 0.88))
+      .accountNo(accountService.createGroupPurchaseAccount())
+      .status(GroupPurchaseStatus.WAITING)
+      .build(),
+      
+      GroupPurchase.builder()
+      .product(productRepository.findById(43L).get())
+      .title("거시경제학 교재 경영대생 모집")
+      .context("경제학과, 경영학과 필수 교재! 중급 거시경제학 같이 공구해서 부담 줄여요!")
+      .targetCount(20)
+      .currentCount(16)
+      .endAt(LocalDateTime.now().plusDays(3))
+      .discountedPrice((long) (90000 * 0.85))
+      .accountNo(accountService.createGroupPurchaseAccount())
+      .status(GroupPurchaseStatus.WAITING)
       .build()
     );
 
