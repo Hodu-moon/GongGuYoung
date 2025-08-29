@@ -10,8 +10,6 @@ import xyz.jinjin99.gongguyoung.backend.domain.product.entity.Product;
 import xyz.jinjin99.gongguyoung.backend.global.enums.GroupPurchaseStatus;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.hibernate.annotations.CurrentTimestamp;
 
@@ -66,12 +64,6 @@ public class GroupPurchase {
     @CurrentTimestamp
     private LocalDateTime createdAt;
 
-    @OneToOne(mappedBy = "groupPurchase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private GroupPurchaseAccount groupPurchaseAccount;
-
-    @Builder.Default
-    @OneToMany(mappedBy = "groupPurchase", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<GroupPurchaseParticipant> participants = new ArrayList<>();
 
     public void increaseCurrentCount() {
         addCurrentCount(1);
