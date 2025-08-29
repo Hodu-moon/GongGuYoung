@@ -199,7 +199,8 @@ Backend 서버 실행 후 다음 URL에서 API 문서를 확인할 수 있습니
 
 - `GET /api/v1/group-purchase` - 공동구매 목록 조회
 - `POST /api/v1/group-purchase` - 공동구매 생성
-- `POST /api/v1/group-purchase/members/{membersId}` 
+- `POST /api/v1/group-purchase/members/{membersId}` - 회원별 참여 공동구매 조회
+
 
 #### 💳 결제
 
@@ -212,41 +213,6 @@ Backend 서버 실행 후 다음 URL에서 API 문서를 확인할 수 있습니
 
 - `GET /api/v1/products` - 상품 목록 조회
 - `GET /api/v1/products/{id}` - 상품 상세 조회
-
-## 🏗️ 프로젝트 구조
-
-### Backend 구조
-
-```
-backend/src/main/java/xyz/jinjin99/gongguyoung/backend/
-├── client/              # 외부 API 클라이언트
-│   └── finopen/        # 신한 금융 Open API
-├── config/             # 설정 파일
-├── domain/             # 도메인별 패키지
-│   ├── grouppurchase/  # 공동구매
-│   ├── member/         # 회원 관리
-│   ├── payment/        # 결제
-│   └── product/        # 상품
-└── global/             # 공통 유틸리티
-    ├── enums/          # 열거형
-    ├── exception/      # 예외 처리
-    └── utils/          # 유틸리티
-```
-
-### Frontend 구조
-
-```
-frontend/src/
-├── api/                # API 호출 함수
-├── components/         # React 컴포넌트
-│   ├── atoms/          # 기본 컴포넌트
-│   ├── molecules/      # 조합 컴포넌트
-│   ├── organisms/      # 복합 컴포넌트
-│   └── ui/             # UI 라이브러리
-├── lib/                # 유틸리티 및 상태 관리
-├── pages/              # 페이지 컴포넌트
-└── styles/             # 스타일 파일
-```
 
 ## 🚀 배포 및 운영
 
