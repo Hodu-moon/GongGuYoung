@@ -32,7 +32,7 @@ type LegacyCardModel = {
   id: string;
   title: string;
   description: string;
-  status: "active" | "completed" | "cancelled"; // 실제로 쓰는 상태 값으로 정리
+  status: "active" | "completed" | "cancelled";
   createdAt?: string;
   participants: number;
   discountPrice: number;
@@ -62,7 +62,6 @@ function RankEmblem({ rank }: { rank: number }) {
 }
 
 function toLegacyCardModel(c: UICampaign): LegacyCardModel {
-  // UICampaign.status: WAITING|COMPLETE|CANCELLED -> 화면 상태로 매핑
   const legacyStatus: LegacyCardModel["status"] =
     c.status === "CANCELLED" ? "cancelled"
     : c.status === "COMPLETE"  ? "completed"
@@ -112,10 +111,8 @@ export default function DashboardPage() {
     return () => { mounted = false; };
   }, []);
 
-  /* ===================== 1) 레거시 모델 ===================== */
   const legacy = useMemo(() => list.map(toLegacyCardModel), [list]);
 
-  /* ===================== 2) 검색 인덱스 ===================== */
   type IndexRow = {
     c: LegacyCardModel;
     titleL: string;
@@ -146,13 +143,11 @@ export default function DashboardPage() {
     });
   }, [legacy]);
 
-  /* ===================== 3) 필터 + 상태 우선 정렬 ===================== */
   const filteredCampaigns = useMemo(() => {
     const qRaw = (deferredSearch || "").trim().toLowerCase();
     const qI = qRaw ? toInitials(qRaw) : "";
     const wantStatus = filters.status;
 
-    // WAITING(=active) > completed > cancelled 우선순위
     const STATUS_PRIORITY: Record<IndexRow["derivedStatus"], number> = {
       active: 0,
       completed: 1,
@@ -169,7 +164,6 @@ export default function DashboardPage() {
       );
     });
 
-    // ✅ 상태 우선 정렬 + 서브 정렬(참여자수↓, 생성일↓)
     rows.sort((a, b) => {
       const byStatus = STATUS_PRIORITY[a.derivedStatus] - STATUS_PRIORITY[b.derivedStatus];
       if (byStatus !== 0) return byStatus;
@@ -183,7 +177,6 @@ export default function DashboardPage() {
     return rows.map((r) => r.c);
   }, [index, deferredSearch, filters.status]);
 
-  /* ===================== 4) 파생 통계 ===================== */
   const stats = useMemo(() => {
     const now = Date.now();
     const activeCount = legacy.filter((c) => new Date(c.endDate).getTime() > now && c.status !== "cancelled").length;
@@ -369,7 +362,9 @@ export default function DashboardPage() {
               </div>
 
               {/* Filters */}
-              <CampaignFilters onFilterChange={(f) => setFilters((s) => ({ ...s, ...f }))} />
+              <CampaignFilters
+                onFilterChange={(f) => setFilters((s) => ({ ...s, ...f }))}
+              />
 
               {/* Grid */}
               <div className="mt-8">
