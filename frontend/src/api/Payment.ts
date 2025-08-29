@@ -14,6 +14,7 @@ export interface BNPLItem{
     itemImageUrl:string;
     bnplAmount:number;
     bnplstatus: string;
+    originalPrice?: number; // 상품 원가 (백엔드 API에서 추가 제공시 사용)
 }
 
 export interface PaymentPost{
@@ -68,6 +69,24 @@ export async function fetchBNPLItems(memberId:number):Promise<BNPLItem[]|null>{
         return response.data;
     } catch (error) {
         console.error("Failed to fetch BNPL items:", error);
+        return null;
+    }
+}
+
+// 일단 processing API를 사용하여 진행 중인 결제만 표시
+// 나중에 백엔드에서 모든 결제 내역 API가 준비되면 수정 예정
+export async function fetchAllPayments(memberId:number):Promise<BNPLItem[]|null>{
+    try {
+        // 현재는 processing API를 재사용
+        const response = await api.get(`${API_BASE_URL}/bnpl/processing`,{
+            params:{
+                memberId
+            }
+        });
+        console.log("모든 결제 내역 (현재는 진행중만):", response);
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch all payments:", error);
         return null;
     }
 }
