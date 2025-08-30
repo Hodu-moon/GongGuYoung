@@ -31,9 +31,6 @@ dependencies {
 	implementation 'mysql:mysql-connector-java:8.0.32'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
-	// FCM
-	implementation 'com.google.firebase:firebase-admin:9.4.1'
-
 	// DEV
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'

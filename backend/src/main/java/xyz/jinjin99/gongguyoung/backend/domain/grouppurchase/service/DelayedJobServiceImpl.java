@@ -14,13 +14,11 @@ import xyz.jinjin99.gongguyoung.backend.domain.payment.entity.PaymentEvent;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.repository.PaymentRepository;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.service.PaymentService;
 import xyz.jinjin99.gongguyoung.backend.domain.payment.dto.request.PaymentCancellationRequest;
-import xyz.jinjin99.gongguyoung.backend.domain.notification.service.FCMService;
 import xyz.jinjin99.gongguyoung.backend.global.exception.GroupPurchaseNotFoundException;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Set;
-import java.util.HashSet;
 import java.util.List;
 
 @Slf4j
@@ -34,7 +32,6 @@ public class DelayedJobServiceImpl implements DelayedJobService {
     private final GroupPurchaseRepository groupPurchaseRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
-    private final FCMService fcmService;
 
     @PostConstruct
     public void clearAllDelayedJobs() {
@@ -94,9 +91,6 @@ public class DelayedJobServiceImpl implements DelayedJobService {
             } else {
                 log.info("공동구매 목표 달성 - 승인 처리 완료: {}", groupPurchaseId);
             }
-
-            // 3. FCM 알림 전송
-            sendExpiryNotificationToParticipants(groupPurchase, isTargetAchieved);
             
         } catch (NumberFormatException e) {
             log.error("잘못된 공동구매 ID 형식: {}", groupPurchaseId, e);
@@ -140,63 +134,6 @@ public class DelayedJobServiceImpl implements DelayedJobService {
                         e);
                 throw new RuntimeException(payment.getId() + " " + payment.getMember().getId());
             }
-        }
-    }
-    
-    private void sendExpiryNotificationToParticipants(GroupPurchase groupPurchase, boolean isTargetAchieved) {
-        try {
-            log.info("=== FCM 알림 전송 시작 ===");
-            log.info("공동구매 ID: {}, 제목: '{}', 목표달성: {}", 
-                    groupPurchase.getId(), groupPurchase.getTitle(), isTargetAchieved);
-            
-            // PaymentEvent를 통해 공동구매 참여자 조회
-            List<PaymentEvent> payments = paymentRepository.findByGroupPurchaseId(groupPurchase.getId());
-            
-            if (payments.isEmpty()) {
-                log.warn("공동구매 ID {}에 대한 결제 이벤트가 없습니다. FCM 알림을 전송하지 않습니다.", groupPurchase.getId());
-                return;
-            }
-            
-            log.info("결제 이벤트 발견: {} 건", payments.size());
-            
-            String title = isTargetAchieved ? "🎉 공동구매 성공!" : "⚠️ 공동구매 취소 안내";
-            String message = isTargetAchieved 
-                ? String.format("'%s' 공동구매가 목표를 달성하여 성공적으로 완료되었습니다!", groupPurchase.getTitle())
-                : String.format("'%s' 공동구매가 목표 인원 미달로 취소되어 환불 처리됩니다.", groupPurchase.getTitle());
-            
-            log.info("FCM 알림 내용 - 제목: '{}', 메시지: '{}'", title, message);
-            
-            // 중복 회원 ID 제거를 위한 Set 사용
-            Set<Long> memberIds = new HashSet<>();
-            for (PaymentEvent payment : payments) {
-                memberIds.add(payment.getMember().getId());
-                log.debug("참여자 발견 - Member ID: {}, Payment ID: {}", 
-                        payment.getMember().getId(), payment.getId());
-            }
-            
-            log.info("고유 참가자 수: {} 명, Member IDs: {}", memberIds.size(), memberIds);
-            
-            int successCount = 0;
-            int failedCount = 0;
-            
-            for (Long memberId : memberIds) {
-                try {
-                    log.info("FCM 알림 전송 시도 - Member ID: {}", memberId);
-                    fcmService.sendNotificationToUser(memberId, title, message);
-                    successCount++;
-                    log.info("FCM 알림 전송 성공 - Member ID: {}", memberId);
-                } catch (Exception e) {
-                    failedCount++;
-                    log.error("FCM 알림 전송 실패 - Member ID: {}, 오류: {}", memberId, e.getMessage());
-                }
-            }
-            
-            log.info("=== FCM 알림 전송 완료 ===");
-            log.info("공동구매 ID: {}, 총 참가자: {}, 성공: {}, 실패: {}", 
-                    groupPurchase.getId(), memberIds.size(), successCount, failedCount);
-                    
-        } catch (Exception e) {
-            log.error("FCM 알림 전송 중 예상치 못한 오류 - 공동구매 ID: {}", groupPurchase.getId(), e);
         }
     }
 }

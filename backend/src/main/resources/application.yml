@@ -6,7 +6,7 @@ spring:
     active: local
 
   jpa:
-    show-sql: false
+    show-sql: true
     hibernate:
       ddl-auto: create
     open-in-view: false
