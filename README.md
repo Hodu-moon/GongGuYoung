@@ -193,14 +193,14 @@ Backend 서버 실행 후 다음 URL에서 API 문서를 확인할 수 있습니
 
 #### 👥 회원 관리
 
-- `POST /api/v1/members/{memberId}/deposit` - 계좌 입금
+- `POST /api/v1/members/{memberId}/deposits` - 계좌 입금
 - `POST /api/v1/members/{id}/bnpl-limit-update` - BNPL 한도 업데이트
 
 #### 🛍️ 공동구매
 
 - `GET  /api/v1/group-purchase` - 공동구매 목록 조회
 - `POST /api/v1/group-purchase` - 공동구매 생성
-- `POST /api/v1/group-purchase/member/{memberId}` - 회원별 참여 공동구매 조회
+- `GET  /api/v1/group-purchase/member/{memberId}` - 회원별 참여 공동구매 조회
 
 
 #### 💳 결제
