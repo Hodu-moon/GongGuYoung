@@ -44,7 +44,7 @@ public class PaymentService {
 
     private final String GROUP_PURCHASE_EMAIL = "gongguyoung@jinjin99.xyz";
 
-    /**
+    /**      여기서 BNPL 설명 들어가야지
      *      1. 공동구매 ID로 계좌번호가져오기
      *      2. 회원 아이디로 계좌번호 구하기
      *      3. 송금
@@ -60,9 +60,6 @@ public class PaymentService {
      */
     @Transactional
     public void processPayment(PaymentRequest paymentRequest){
-        // 1. 공동구매 ID로 계좌번호가져오기 -> 덕종이형 진행중
-
-
 
         if ("IMMEDIATE_ONLY".equals(paymentRequest.getPaymentType())) {
             if (paymentRequest.getImmediate() <= 0 || paymentRequest.getBnpl() != 0) {
@@ -154,14 +151,10 @@ public class PaymentService {
         }
 
         // (선택) 공동구매 상태로 취소 가능 여부 체크
-
         // group purchase 계좌에도 손을 대야해서
         String groupPurchaseUserKey = getGroupPurchaseUserKey();
 
-
-
         // 1) 계좌 정보
-        // TODO: 실제 그룹공동구매 전용  이게 맞는지 잘 모르겠음
         GroupPurchase groupPurchase = event.getGroupPurchase();
         String groupPurchaseAccountNo = groupPurchase.getAccountNo();
         Member member = memberService.getMember(request.getMemberId());
@@ -387,4 +380,8 @@ public class PaymentService {
                 .withdrawalTransactionSummary(TransactionSummaryUtil.createWithdrawSummary("공동구매", paymentRequest.getCount()))
                 .build();
     }
+
+
+
+
 }
