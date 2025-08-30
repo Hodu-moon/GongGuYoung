@@ -30,7 +30,7 @@ export function NavigationHeader({
     <header className={`bg-hey-gradient text-white p-4 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Image src="/hey-young-logo.png" alt="Hey Young" width={32} height={32} />
+          <Image src="/favicon.png" alt="GongGuYoung" width={32} height={32} />
           {title && (
             <Typography variant="h3" className="text-white">
               {title}

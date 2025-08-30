@@ -14,14 +14,14 @@ export default function LoginPage() {
             <div className="flex justify-between items-center">
               <Link to="/" className="flex items-center gap-3">
                 <Image
-                  src="/hey-young-logo.png"
-                  alt="Hey Young Smart Campus"
+                  src="/favicon.png"
+                  alt="GongGuYoung Smart Campus"
                   width={36}
                   height={36}
                   className="rounded-lg"
                 />
                 <div>
-                  <h1 className="text-lg font-bold text-white">Hey Young</h1>
+                  <h1 className="text-lg font-bold text-white">GongGuYoung</h1>
                   <p className="text-xs text-white/80">Smart Campus</p>
                 </div>
               </Link>

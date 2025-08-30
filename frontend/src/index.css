@@ -6,7 +6,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated to exact Hey Young gradient colors from the provided image */
+  /* Updated to exact GongGuYoung gradient colors from the provided image */
   --background: oklch(1 0 0);
   --foreground: oklch(0.35 0.01 258);
   --card: oklch(0.98 0.005 258);
