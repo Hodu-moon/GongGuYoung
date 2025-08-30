@@ -17,9 +17,6 @@ export type NotificationType =
   | "campaign_start"
   | "campaign_complete"
   | "campaign_deadline"
-  | "campaign_cancelled"
-  | "group_purchase_success"
-  | "group_purchase_cancelled"
   | "payment_due"
   | "payment_success"
   | "payment_failed"
@@ -66,24 +63,6 @@ export const notificationTypeConfig: Record<
   },
   campaign_deadline: {
     icon: "⏰",
-    color: "text-orange-600",
-    category: "campaigns",
-    defaultPriority: "high",
-  },
-  campaign_cancelled: {
-    icon: "❌",
-    color: "text-red-600",
-    category: "campaigns",
-    defaultPriority: "high",
-  },
-  group_purchase_success: {
-    icon: "🎉",
-    color: "text-green-600",
-    category: "campaigns",
-    defaultPriority: "high",
-  },
-  group_purchase_cancelled: {
-    icon: "💸",
     color: "text-orange-600",
     category: "campaigns",
     defaultPriority: "high",
@@ -148,27 +127,4 @@ export function getRelativeTime(dateString: string): string {
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`
   if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}일 전`
   return date.toLocaleDateString()
-}
-
-// FCM payload를 Notification 타입으로 변환하는 유틸리티
-export function convertFCMPayloadToNotification(
-  payload: any, 
-  userId: string
-): Omit<Notification, "id" | "createdAt"> {
-  // FCM payload에서 알림 타입 추출 (데이터에서 또는 기본값)
-  const notificationType = payload.data?.notificationType || "system_update" as NotificationType
-  
-  // 알림 타입에 따른 설정 가져오기
-  const config = notificationTypeConfig[notificationType] || notificationTypeConfig["system_update"]
-  
-  return {
-    userId,
-    type: notificationType,
-    title: payload.notification?.title || "새로운 알림",
-    message: payload.notification?.body || "알림 메시지가 도착했습니다.",
-    isRead: false,
-    priority: config.defaultPriority,
-    relatedId: payload.data?.relatedId,
-    actionUrl: payload.data?.actionUrl || payload.data?.click_action
-  }
 }

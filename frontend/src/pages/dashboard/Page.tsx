@@ -13,7 +13,6 @@ import {
   Plus, Users, ShoppingCart, TrendingUp, User, Clock, Star, Trophy, Eye,
 } from "lucide-react";
 import { GroupPurchaseApi, type UICampaign } from "@/lib/group-purchase-api";
-import { FCMDebug } from "@/components/FCMDebug";
 
 /* ===================== 초성 매칭 유틸 (경량) ===================== */
 const CHO = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
@@ -403,7 +402,6 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
-      <FCMDebug />
     </AuthGuard>
   );
 }
