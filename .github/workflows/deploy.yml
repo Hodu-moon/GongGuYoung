@@ -25,6 +25,15 @@ jobs:
           json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           dir: "backend/src/main/resources"
 
+      - name: Copy firebase json to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          source: "backend/src/main/resources/firebase-service-account.json"
+          target: "/home/ubuntu/GongGuYoung/backend/src/main/resources/"
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
