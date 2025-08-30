@@ -23,7 +23,7 @@ jobs:
         with:
           name: "firebase-service-account.json"
           json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          dir: "backend/src/main/resources"
+          dir: "~/GongGuYoung/backend/src/main/resources"
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
