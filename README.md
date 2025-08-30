@@ -187,32 +187,32 @@ Backend 서버 실행 후 다음 URL에서 API 문서를 확인할 수 있습니
 
 #### 🔐 인증 관련
 
-- `POST /api/v1/auth/login` - 로그인
-- `POST /api/v1/auth/signup` - 회원가입
+- `POST /api/v1/login` - 로그인
+- `POST /api/v1/member` - 회원가입
 
 #### 👥 회원 관리
 
-- `POST /api/v1/members/deposit` - 계좌 입금
-- `PUT /api/v1/members/{id}/bnpl-limit-update` - BNPL 한도 업데이트
+- `POST /api/v1/members/{memberId}/deposit` - 계좌 입금
+- `POST /api/v1/members/{id}/bnpl-limit-update` - BNPL 한도 업데이트
 
 #### 🛍️ 공동구매
 
-- `GET /api/v1/group-purchase` - 공동구매 목록 조회
+- `GET  /api/v1/group-purchase` - 공동구매 목록 조회
 - `POST /api/v1/group-purchase` - 공동구매 생성
-- `POST /api/v1/group-purchase/members/{membersId}` - 회원별 참여 공동구매 조회
+- `POST /api/v1/group-purchase/member/{memberId}` - 회원별 참여 공동구매 조회
 
 
 #### 💳 결제
 
 - `POST /api/v1/payments` - 공동구매 참여 및 결제
 - `POST /api/v1/payments/bnpl` - BNPL 상환
-- `GET /api/v1/payments/bnpl` - BNPL 잔액 조회
+- `GET  /api/v1/payments/bnpl` - BNPL 잔액 조회
 - `POST /api/v1/payments/refund` - 공동구매 결제 취소
 
 #### 📦 상품
 
-- `GET /api/v1/products` - 상품 목록 조회
-- `GET /api/v1/products/{id}` - 상품 상세 조회
+- `GET  /api/v1/products` - 상품 목록 조회
+- `GET  /api/v1/products/{id}` - 상품 상세 조회
 ## 🐬 ERD
 
 <img width="500" height="1024" alt="ERD" src="https://github.com/user-attachments/assets/2965c7ac-d21e-44ff-ab68-22755776740a" />
