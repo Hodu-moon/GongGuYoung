@@ -2,80 +2,87 @@ name: Deploy to EC2 (Git Diff Method)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: Deploy
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-      
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_PRIVATE_KEY }}
-        port: 22
-        script: |
-          cd /home/ubuntu/GongGuYoung
-          
-          # 현재 커밋 해시 저장
-          CURRENT_COMMIT=$(git rev-parse HEAD)
-          echo "Current commit: $CURRENT_COMMIT"
-          
-          # 변경사항 가져오기
-          git fetch origin main
-          git pull origin main
-          
-          # 새 커밋 해시
-          NEW_COMMIT=$(git rev-parse HEAD)
-          echo "New commit: $NEW_COMMIT"
-          
-          # 변경된 파일들 확인
-          if [ "$CURRENT_COMMIT" != "$NEW_COMMIT" ]; then
-            echo "Changes detected, checking which services to update..."
-            
-            # 프론트엔드 변경사항 확인
-            FRONTEND_CHANGED=$(git diff --name-only $CURRENT_COMMIT $NEW_COMMIT | grep "^frontend/" | wc -l)
-            
-            # 백엔드 변경사항 확인  
-            BACKEND_CHANGED=$(git diff --name-only $CURRENT_COMMIT $NEW_COMMIT | grep "^backend/" | wc -l)
-            
-            # 프론트엔드 배포
-            if [ $FRONTEND_CHANGED -gt 0 ]; then
-              echo "Deploying frontend service..."
-              docker compose up -d --build 'nginx'
-              echo "Frontend deployment completed"
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Firebase json (resources)
+        uses: jsdaniell/create-json@1.1.2
+        with:
+          name: "firebase-service-account.json"
+          json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          dir: "backend/src/main/resources"
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd /home/ubuntu/GongGuYoung
+
+            # 현재 커밋 해시 저장
+            CURRENT_COMMIT=$(git rev-parse HEAD)
+            echo "Current commit: $CURRENT_COMMIT"
+
+            # 변경사항 가져오기
+            git fetch origin main
+            git pull origin main
+
+            # 새 커밋 해시
+            NEW_COMMIT=$(git rev-parse HEAD)
+            echo "New commit: $NEW_COMMIT"
+
+            # 변경된 파일들 확인
+            if [ "$CURRENT_COMMIT" != "$NEW_COMMIT" ]; then
+              echo "Changes detected, checking which services to update..."
+              
+              # 프론트엔드 변경사항 확인
+              FRONTEND_CHANGED=$(git diff --name-only $CURRENT_COMMIT $NEW_COMMIT | grep "^frontend/" | wc -l)
+              
+              # 백엔드 변경사항 확인  
+              BACKEND_CHANGED=$(git diff --name-only $CURRENT_COMMIT $NEW_COMMIT | grep "^backend/" | wc -l)
+              
+              # 프론트엔드 배포
+              if [ $FRONTEND_CHANGED -gt 0 ]; then
+                echo "Deploying frontend service..."
+                docker compose up -d --build 'nginx'
+                echo "Frontend deployment completed"
+              else
+                echo "No frontend changes detected, skipping frontend deployment"
+              fi
+              
+              # 백엔드 배포
+              if [ $BACKEND_CHANGED -gt 0 ]; then
+                echo "Deploying backend service..."
+                docker compose up -d --build 'springboot'
+                echo "Backend deployment completed"
+              else
+                echo "No backend changes detected, skipping backend deployment"
+              fi
+              
+              # 전체 상태 확인
+              echo "Current running services:"
+              docker compose ps
+              
+              # 남은 리소스 정리
+              docker system prune -f
             else
-              echo "No frontend changes detected, skipping frontend deployment"
+              echo "No changes detected, skipping deployment"
             fi
-            
-            # 백엔드 배포
-            if [ $BACKEND_CHANGED -gt 0 ]; then
-              echo "Deploying backend service..."
-              docker compose up -d --build 'springboot'
-              echo "Backend deployment completed"
-            else
-              echo "No backend changes detected, skipping backend deployment"
-            fi
-            
-            # 전체 상태 확인
-            echo "Current running services:"
-            docker compose ps
-            
-            # 남은 리소스 정리
-            docker system prune -f
-          else
-            echo "No changes detected, skipping deployment"
-          fi
-          
-          echo "Deployment process completed!"
+
+            echo "Deployment process completed!"

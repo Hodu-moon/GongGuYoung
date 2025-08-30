@@ -1,13 +1,19 @@
-import { useState, useEffect } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { AuthGuard } from "@/components/auth/auth-guard"
-import { useAuth } from "@/lib/auth-context"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { fetchBNPLRemain, fetchBNPLItems, postBnplRepay, type BNPLRemain, type BNPLItem } from "@/api/Payment"
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  fetchBNPLRemain,
+  fetchBNPLItems,
+  postBnplRepay,
+  type BNPLRemain,
+  type BNPLItem,
+} from "@/api/Payment";
 import {
   ArrowLeft,
   CreditCard,
@@ -17,144 +23,154 @@ import {
   Clock,
   Bell,
   User,
-  Plus
-} from "lucide-react"
-import Image from '@/compat/NextImage'
+  Plus,
+} from "lucide-react";
+import Image from "@/compat/NextImage";
 
 export default function BnplRepayPage() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
-  const [bnplItems, setBnplItems] = useState<BNPLItem[]>([])
-  const [bnplRemain, setBnplRemain] = useState<BNPLRemain | null>(null)
-  const [starterBalance, setStarterBalance] = useState<number>(0)
-  const [isLoadingBnpl, setIsLoadingBnpl] = useState(true)
-  const [isLoadingBalance, setIsLoadingBalance] = useState(true)
-  const [repayAmount, setRepayAmount] = useState("")
-  const [isProcessing, setIsProcessing] = useState(false)
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [bnplItems, setBnplItems] = useState<BNPLItem[]>([]);
+  const [bnplRemain, setBnplRemain] = useState<BNPLRemain | null>(null);
+  const [starterBalance, setStarterBalance] = useState<number>(0);
+  const [isLoadingBnpl, setIsLoadingBnpl] = useState(true);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const [repayAmount, setRepayAmount] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // BNPL 데이터 및 잔액 로드
   useEffect(() => {
     const loadData = async () => {
-      if (!user?.id) return
-      
-      setIsLoadingBnpl(true)
-      setIsLoadingBalance(true)
-      
+      if (!user?.id) return;
+
+      setIsLoadingBnpl(true);
+      setIsLoadingBalance(true);
+
       try {
         const [remain, items, balanceResponse] = await Promise.all([
           fetchBNPLRemain(user.id),
           fetchBNPLItems(user.id),
-          fetch(`/api/v1/members/${user.id}/starter-balance`)
-        ])
-        
-        setBnplRemain(remain)
-        setBnplItems(items || [])
-        
+          fetch(`/api/v1/members/${user.id}/starter-balance`),
+        ]);
+
+        setBnplRemain(remain);
+        setBnplItems(items || []);
+
         if (balanceResponse.ok) {
-          const balanceData = await balanceResponse.json()
-          setStarterBalance(balanceData.starterBalance || 0)
+          const balanceData = await balanceResponse.json();
+          setStarterBalance(balanceData.starterBalance || 0);
         }
       } catch (error) {
-        console.error('Failed to load data:', error)
+        console.error("Failed to load data:", error);
       } finally {
-        setIsLoadingBnpl(false)
-        setIsLoadingBalance(false)
+        setIsLoadingBnpl(false);
+        setIsLoadingBalance(false);
       }
-    }
+    };
 
-    loadData()
-  }, [user?.id])
+    loadData();
+  }, [user?.id]);
 
   // 상환 대상 아이템들 (PROCESSING 상태이면서 금액이 0원보다 큰 것들만)
-  const processingItems = bnplItems.filter(item => item.bnplstatus === "PROCESSING" && item.bnplAmount > 0)
-  
+  const processingItems = bnplItems.filter(
+    (item) => item.bnplstatus === "PROCESSING" && item.bnplAmount > 0
+  );
+
   // 총 상환 금액 (BNPL 사용 중인 금액과 동일)
-  const totalRepayAmount = bnplRemain ? (bnplRemain.bnplLimit - bnplRemain.remain) : 0
+  const totalRepayAmount = bnplRemain
+    ? bnplRemain.bnplLimit - bnplRemain.remain
+    : 0;
 
   // 상환 처리
   const handleRepay = async () => {
     if (!user?.id) {
-      alert('로그인이 필요합니다.')
-      return
+      alert("로그인이 필요합니다.");
+      return;
     }
 
-    const amount = parseInt(repayAmount)
+    const amount = parseInt(repayAmount);
     if (!amount || amount <= 0) {
-      alert('올바른 금액을 입력해주세요.')
-      return
+      alert("올바른 금액을 입력해주세요.");
+      return;
     }
 
     if (amount > totalRepayAmount) {
-      alert('상환할 금액이 총 상환 금액보다 클 수 없습니다.')
-      return
+      alert("상환할 금액이 총 상환 금액보다 클 수 없습니다.");
+      return;
     }
 
     if (amount > starterBalance) {
-      alert('보유 금액이 부족합니다.')
-      return
+      alert("보유 금액이 부족합니다.");
+      return;
     }
 
-    setIsProcessing(true)
-    
+    setIsProcessing(true);
+
     try {
       // 부분 상환의 경우 금액 비례로 각 아이템에서 차감
-      let remainingAmount = amount
-      const repayPromises = []
-      
+      let remainingAmount = amount;
+      const repayPromises = [];
+
       for (const item of processingItems) {
-        if (remainingAmount <= 0) break
-        
-        const itemRepayAmount = amount === totalRepayAmount 
-          ? item.bnplAmount  // 전체 상환인 경우 해당 아이템 전액
-          : Math.min(Math.floor((item.bnplAmount / totalRepayAmount) * amount), remainingAmount) // 비례 상환
-          
+        if (remainingAmount <= 0) break;
+
+        const itemRepayAmount =
+          amount === totalRepayAmount
+            ? item.bnplAmount // 전체 상환인 경우 해당 아이템 전액
+            : Math.min(
+                Math.floor((item.bnplAmount / totalRepayAmount) * amount),
+                remainingAmount
+              ); // 비례 상환
+
         if (itemRepayAmount > 0) {
           repayPromises.push(
             postBnplRepay({
               paymentId: item.paymentId,
               memberId: user.id,
-              amount: itemRepayAmount
+              amount: itemRepayAmount,
             })
-          )
-          remainingAmount -= itemRepayAmount
+          );
+          remainingAmount -= itemRepayAmount;
         }
       }
-      
-      const results = await Promise.all(repayPromises)
-      const successCount = results.filter(result => result).length
-      
+
+      const results = await Promise.all(repayPromises);
+      const successCount = results.filter((result) => result).length;
+
       if (successCount > 0) {
         // 잔액 업데이트: 상환한 금액만큼 차감
         try {
-          const updatedBalanceResponse = await fetch(`/api/v1/members/${user.id}/starter-balance`)
+          const updatedBalanceResponse = await fetch(
+            `/api/v1/members/${user.id}/starter-balance`
+          );
           if (updatedBalanceResponse.ok) {
-            const balanceData = await updatedBalanceResponse.json()
-            setStarterBalance(balanceData.starterBalance || 0)
+            const balanceData = await updatedBalanceResponse.json();
+            setStarterBalance(balanceData.starterBalance || 0);
           }
         } catch (error) {
-          console.error('Failed to update balance:', error)
+          console.error("Failed to update balance:", error);
         }
-        
-        alert(`${amount.toLocaleString()}원 상환이 완료되었습니다.`)
-        navigate('/my-page')
+
+        alert(`${amount.toLocaleString()}원 상환이 완료되었습니다.`);
+        navigate("/my-page");
       } else {
-        alert('상환 처리 중 오류가 발생했습니다.')
+        alert("상환 처리 중 오류가 발생했습니다.");
       }
     } catch (error) {
-      console.error('Repay error:', error)
-      alert('상환 처리 중 오류가 발생했습니다.')
+      console.error("Repay error:", error);
+      alert("상환 처리 중 오류가 발생했습니다.");
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   const getStatusBadge = (status: string) => {
     if (status.toLowerCase() === "processing") {
-      return <Badge className="bg-orange-100 text-orange-700">상환 대기</Badge>
+      return <Badge className="bg-orange-100 text-orange-700">상환 대기</Badge>;
     } else {
-      return <Badge className="bg-green-100 text-green-700">상환 완료</Badge>
+      return <Badge className="bg-green-100 text-green-700">상환 완료</Badge>;
     }
-  }
+  };
 
   if (isLoadingBnpl || isLoadingBalance) {
     return (
@@ -166,7 +182,7 @@ export default function BnplRepayPage() {
           </div>
         </div>
       </AuthGuard>
-    )
+    );
   }
 
   return (
@@ -176,7 +192,10 @@ export default function BnplRepayPage() {
         <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
           <div className="container mx-auto px-4 py-3">
             <div className="flex justify-between items-center">
-              <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+              >
                 <Image
                   src="/hey-young-logo.png"
                   alt="Hey Young Smart Campus"
@@ -191,17 +210,29 @@ export default function BnplRepayPage() {
               </Link>
               <div className="flex gap-1">
                 <Link to="/notifications">
-                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/20 p-2"
+                  >
                     <Bell className="w-4 h-4" />
                   </Button>
                 </Link>
                 <Link to="/my-page">
-                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/20 p-2"
+                  >
                     <User className="w-4 h-4" />
                   </Button>
                 </Link>
                 <Link to="/create-campaign">
-                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/20 p-2"
+                  >
                     <Plus className="w-4 h-4" />
                   </Button>
                 </Link>
@@ -213,12 +244,17 @@ export default function BnplRepayPage() {
         <div className="container mx-auto px-4 py-8">
           {/* Page Header */}
           <div className="mb-8">
-            <Link to="/my-page" className="inline-flex items-center gap-2 text-white hover:opacity-80 transition-opacity mb-4">
+            <Link
+              to="/my-page"
+              className="inline-flex items-center gap-2 text-white hover:opacity-80 transition-opacity mb-4"
+            >
               <ArrowLeft className="w-4 h-4" />
               마이페이지로 돌아가기
             </Link>
             <h1 className="text-4xl font-bold mb-2 text-white">BNPL 상환</h1>
-            <p className="text-white/90 text-lg">보유 금액으로 BNPL 상환을 진행하세요</p>
+            <p className="text-white/90 text-lg">
+              보유 금액으로 BNPL 상환을 진행하세요
+            </p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
@@ -262,15 +298,19 @@ export default function BnplRepayPage() {
                       <div className="text-2xl font-bold text-blue-600">
                         {processingItems.length}개
                       </div>
-                      <div className="text-sm text-blue-700">상환 대상 아이템</div>
+                      <div className="text-sm text-blue-700">
+                        상환 대상 아이템
+                      </div>
                     </div>
                   </div>
-                  
+
                   {starterBalance < totalRepayAmount && (
                     <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <AlertCircle className="w-5 h-5 text-orange-600" />
-                        <span className="font-semibold text-orange-800">잔액 부족</span>
+                        <span className="font-semibold text-orange-800">
+                          잔액 부족
+                        </span>
                       </div>
                       <p className="text-sm text-orange-700">
                         보유 금액이 부족하여 부분 상환만 가능합니다.
@@ -290,7 +330,10 @@ export default function BnplRepayPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="repayAmount" className="text-sm font-medium text-gray-700">
+                    <Label
+                      htmlFor="repayAmount"
+                      className="text-sm font-medium text-gray-700"
+                    >
                       상환할 금액 (원)
                     </Label>
                     <div className="mt-2 flex gap-2">
@@ -305,7 +348,9 @@ export default function BnplRepayPage() {
                         className="flex-1"
                         disabled={isProcessing}
                       />
-                      <span className="flex items-center text-gray-600">원</span>
+                      <span className="flex items-center text-gray-600">
+                        원
+                      </span>
                     </div>
                   </div>
 
@@ -314,7 +359,11 @@ export default function BnplRepayPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setRepayAmount(Math.min(totalRepayAmount, starterBalance).toString())}
+                      onClick={() =>
+                        setRepayAmount(
+                          Math.min(totalRepayAmount, starterBalance).toString()
+                        )
+                      }
                       disabled={isProcessing}
                       className="text-sm"
                     >
@@ -323,8 +372,12 @@ export default function BnplRepayPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setRepayAmount(totalRepayAmount.toString())}
-                      disabled={isProcessing || starterBalance < totalRepayAmount}
+                      onClick={() =>
+                        setRepayAmount(totalRepayAmount.toString())
+                      }
+                      disabled={
+                        isProcessing || starterBalance < totalRepayAmount
+                      }
                       className="text-sm"
                     >
                       전체 상환
@@ -333,7 +386,13 @@ export default function BnplRepayPage() {
 
                   <Button
                     onClick={handleRepay}
-                    disabled={!repayAmount || isProcessing || parseInt(repayAmount) <= 0 || parseInt(repayAmount) > Math.min(totalRepayAmount, starterBalance)}
+                    disabled={
+                      !repayAmount ||
+                      isProcessing ||
+                      parseInt(repayAmount) <= 0 ||
+                      parseInt(repayAmount) >
+                        Math.min(totalRepayAmount, starterBalance)
+                    }
                     className="w-full bg-hey-gradient hover:opacity-90"
                   >
                     {isProcessing ? (
@@ -342,7 +401,11 @@ export default function BnplRepayPage() {
                         상환 처리 중...
                       </>
                     ) : (
-                      `${repayAmount ? parseInt(repayAmount).toLocaleString() : '0'}원 상환하기`
+                      `${
+                        repayAmount
+                          ? parseInt(repayAmount).toLocaleString()
+                          : "0"
+                      }원 상환하기`
                     )}
                   </Button>
                 </CardContent>
@@ -374,8 +437,12 @@ export default function BnplRepayPage() {
                                 className="w-12 h-12 object-cover rounded-lg"
                               />
                               <div>
-                                <h3 className="font-semibold text-purple-800">{item.itemName}</h3>
-                                <p className="text-sm text-purple-600">{item.groupPurchaseTitle}</p>
+                                <h3 className="font-semibold text-purple-800">
+                                  {item.itemName}
+                                </h3>
+                                <p className="text-sm text-purple-600">
+                                  {item.groupPurchaseTitle}
+                                </p>
                               </div>
                             </div>
                             <div className="text-right">
@@ -394,8 +461,12 @@ export default function BnplRepayPage() {
                   ) : (
                     <div className="text-center py-8 text-purple-600">
                       <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
-                      <p className="text-lg font-semibold">상환할 BNPL이 없습니다!</p>
-                      <p className="text-sm text-gray-600 mt-2">모든 BNPL 상환이 완료되었습니다.</p>
+                      <p className="text-lg font-semibold">
+                        상환할 BNPL이 없습니다!
+                      </p>
+                      <p className="text-sm text-gray-600 mt-2">
+                        모든 BNPL 상환이 완료되었습니다.
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -405,5 +476,5 @@ export default function BnplRepayPage() {
         </div>
       </div>
     </AuthGuard>
-  )
+  );
 }
