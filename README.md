@@ -187,8 +187,8 @@ Backend 서버 실행 후 다음 URL에서 API 문서를 확인할 수 있습니
 
 #### 🔐 인증 관련
 
-- `POST /api/auth/login` - 로그인
-- `POST /api/auth/signup` - 회원가입
+- `POST /api/v1/auth/login` - 로그인
+- `POST /api/v1/auth/signup` - 회원가입
 
 #### 👥 회원 관리
 
